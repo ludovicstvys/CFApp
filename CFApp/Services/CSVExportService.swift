@@ -5,7 +5,7 @@ struct CSVExportService {
         let header = [
             "id", "level", "category", "subcategory", "stem",
             "choiceA", "choiceB", "choiceC", "choiceD",
-            "answerIndex", "explanation", "difficulty", "importedAt"
+            "answerIndex", "explanation", "difficulty", "image", "importedAt"
         ]
         let rows = questions.map { q in
             let choices = padChoices(q.choices, count: 4)
@@ -22,6 +22,7 @@ struct CSVExportService {
                 formatAnswerIndices(q.correctIndices),
                 q.explanation,
                 q.difficulty.map(String.init) ?? "",
+                q.imageName ?? "",
                 q.importedAt.map(iso8601String) ?? ""
             ]
         }

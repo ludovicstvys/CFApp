@@ -19,14 +19,14 @@ struct CSVImportView: View {
 
     var body: some View {
         Form {
-            Section("Importer des questions (CSV)") {
-                Text("Le CSV est importé et stocké localement. Ces questions sont ensuite fusionnées avec celles du bundle (offline).")
+            Section("Importer des questions (ZIP)") {
+                Text("Le ZIP contient un CSV + des images. Le tout est importé et stocké localement puis fusionné avec le bundle (offline).")
                     .foregroundStyle(.secondary)
 
                 Button {
                     showImporter = true
                 } label: {
-                    Label("Choisir un fichier CSV…", systemImage: "square.and.arrow.down")
+                    Label("Choisir un fichier ZIP...", systemImage: "square.and.arrow.down")
                 }
 
                 if status == .importing {
@@ -50,7 +50,7 @@ struct CSVImportView: View {
             Section("Format attendu") {
                 Text("""
             En-tête recommandé :
-            id, level, category, subcategory, stem, choiceA, choiceB, choiceC, choiceD, answerIndex, explanation, difficulty
+            id, level, category, subcategory, stem, choiceA, choiceB, choiceC, choiceD, answerIndex, explanation, difficulty, image
             """)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -59,6 +59,7 @@ struct CSVImportView: View {
             • category : ex: Ethics, Quantitative Methods, FRA (alias accepté)
             • subcategory : texte libre (ex: Time Value of Money)
             • answerIndex : 0..3 ou A/B/C/D (multi : A|C ou 0|2)
+            - image : nom de fichier dans le ZIP (ex: images/q1.png)
             """)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -108,6 +109,7 @@ struct CSVImportView: View {
 
                 Button(role: .destructive) {
                     QuestionDiskStore.shared.clear()
+                    QuestionAssetStore.shared.clear()
                     importedCount = 0
                     errors = []
                     status = .idle
@@ -116,7 +118,7 @@ struct CSVImportView: View {
                 }
             }
         }
-        .navigationTitle("Import CSV")
+        .navigationTitle("Import ZIP")
         .fileExporter(
             isPresented: $showReportExporter,
             document: reportDocument ?? TextDocument(text: ""),
@@ -127,20 +129,20 @@ struct CSVImportView: View {
         }
         .fileImporter(
             isPresented: $showImporter,
-            allowedContentTypes: [UTType.commaSeparatedText, .plainText],
+            allowedContentTypes: [UTType.zip],
             allowsMultipleSelection: false
         ) { result in
             switch result {
             case .success(let urls):
                 guard let url = urls.first else { return }
-                importCSV(url: url)
+                importZIP(url: url)
             case .failure(let error):
                 status = .failed(error.localizedDescription)
             }
         }
     }
 
-    private func importCSV(url: URL) {
+    private func importZIP(url: URL) {
         status = .importing
         errors = []
         warnings = []
@@ -151,9 +153,8 @@ struct CSVImportView: View {
                 let canAccess = url.startAccessingSecurityScopedResource()
                 defer { if canAccess { url.stopAccessingSecurityScopedResource() } }
 
-                let data = try Data(contentsOf: url)
-                let importer = CSVQuestionImporter()
-                let result = try importer.importQuestions(from: data)
+                let importer = ZipQuestionImporter()
+                let result = try importer.importQuestions(from: url)
 
                 // merge avec existant
                 let existing = QuestionDiskStore.shared.load()
@@ -177,7 +178,7 @@ struct CSVImportView: View {
 
     private func buildReport() -> String {
         var lines: [String] = []
-        lines.append("Import CSV - Rapport")
+        lines.append("Import ZIP - Rapport")
         lines.append("Statut: \(statusText())")
         lines.append("Questions importées: \(importedCount)")
         lines.append("")

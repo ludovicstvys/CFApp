@@ -1,9 +1,11 @@
 import SwiftUI
+import UIKit
 
 struct QuestionCardView: View {
     let category: CFACategory
     let subcategory: String?
     let stem: String
+    let imageName: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -19,6 +21,13 @@ struct QuestionCardView: View {
                         .padding(.vertical, 6)
                         .background(Color.secondary.opacity(0.10), in: Capsule())
                 }
+            }
+
+            if let imageName, let image = QuestionAssetStore.shared.loadImage(named: imageName) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
 
             Text(stem)

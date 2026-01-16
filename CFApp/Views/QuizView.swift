@@ -87,7 +87,8 @@ struct QuizView: View {
                 QuestionCardView(
                     category: current.original.category,
                     subcategory: current.original.subcategory,
-                    stem: current.stem
+                    stem: current.stem,
+                    imageName: current.original.imageName
                 )
 
                 if current.correctIndices.count > 1 {

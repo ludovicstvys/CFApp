@@ -21,13 +21,13 @@ struct SettingsView: View {
             }
 
             Section("Données") {
-                Text("Les questions du niveau 1 sont chargées depuis un JSON embarqué (offline).")
+                Text("Les questions du niveau 1 sont chargées depuis un JSON embarqué (offline). L'import ZIP ajoute des questions et images locales.")
                     .foregroundStyle(.secondary)
 
                 NavigationLink {
                     CSVImportView()
                 } label: {
-                    Label("Importer des questions (CSV)", systemImage: "square.and.arrow.down")
+                    Label("Importer des questions (ZIP)", systemImage: "square.and.arrow.down")
                 }
             }
 

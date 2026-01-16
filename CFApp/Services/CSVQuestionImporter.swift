@@ -139,6 +139,7 @@ struct CSVQuestionImporter {
         let ansIdx = legacyNoHeader ? 8 : 9
         let expIdx = legacyNoHeader ? 9 : 10
         let diffIdx = legacyNoHeader ? 10 : 11
+        let imgIdx = legacyNoHeader ? nil : 12
 
         let subcategory = (field(row, header: header, keys: ["subcategory", "sub_category", "subtopic"], fallbackIndex: subIdx) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -184,6 +185,10 @@ struct CSVQuestionImporter {
             warnings.append("difficulty invalide (ignorée)")
         }
 
+        let imageRaw = (field(row, header: header, keys: ["image", "photo", "image_name", "imagefilename"], fallbackIndex: imgIdx) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let imageName = imageRaw.isEmpty ? nil : imageRaw
+
         let question = CFAQuestion(
             id: id,
             level: level,
@@ -194,6 +199,7 @@ struct CSVQuestionImporter {
             correctIndices: correctIndices.sorted(),
             explanation: explanation.isEmpty ? "—" : explanation,
             difficulty: difficulty,
+            imageName: imageName,
             importedAt: Date()
         )
         return (question, warnings)

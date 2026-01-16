@@ -18,6 +18,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
     let correctIndices: [Int]
     let explanation: String
     let difficulty: Int?
+    let imageName: String?
     let importedAt: Date?
 
     init(
@@ -30,6 +31,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         correctIndices: [Int],
         explanation: String,
         difficulty: Int? = nil,
+        imageName: String? = nil,
         importedAt: Date? = nil
     ) {
         self.id = id
@@ -41,13 +43,14 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         self.correctIndices = correctIndices.sorted()
         self.explanation = explanation
         self.difficulty = difficulty
+        self.imageName = imageName
         self.importedAt = importedAt
     }
 
     // MARK: - Codable (rétrocompat)
 
     private enum CodingKeys: String, CodingKey {
-        case id, level, category, subcategory, stem, choices, correctIndices, answerIndex, explanation, difficulty, importedAt
+        case id, level, category, subcategory, stem, choices, correctIndices, answerIndex, explanation, difficulty, imageName, importedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -61,6 +64,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         choices = try c.decode([String].self, forKey: .choices)
         explanation = try c.decode(String.self, forKey: .explanation)
         difficulty = try c.decodeIfPresent(Int.self, forKey: .difficulty)
+        imageName = try c.decodeIfPresent(String.self, forKey: .imageName)
         importedAt = try c.decodeIfPresent(Date.self, forKey: .importedAt)
 
         if let multi = try c.decodeIfPresent([Int].self, forKey: .correctIndices), !multi.isEmpty {
@@ -84,6 +88,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         try c.encode(correctIndices, forKey: .correctIndices)
         try c.encode(explanation, forKey: .explanation)
         try c.encodeIfPresent(difficulty, forKey: .difficulty)
+        try c.encodeIfPresent(imageName, forKey: .imageName)
         try c.encodeIfPresent(importedAt, forKey: .importedAt)
     }
 
