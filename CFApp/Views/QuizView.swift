@@ -67,7 +67,7 @@ struct QuizView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             PrimaryButton(title: "Réessayer", systemImage: "arrow.clockwise") {
-                vm.start(config: config)
+                vm.start(config: vm.config)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

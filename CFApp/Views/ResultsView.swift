@@ -106,7 +106,8 @@ struct ResultsView: View {
             dict[r.category, default: (0, 0)].1 += 1
             if r.isCorrect { dict[r.category, default: (0, 0)].0 += 1 }
         }
-        return dict.mapValues { c, t in
+        return dict.mapValues { tuple in
+            let (c, t) = tuple
             let p = t == 0 ? 0 : Double(c) / Double(t)
             return (c, t, p)
         }
@@ -120,7 +121,8 @@ struct ResultsView: View {
             dict[sub, default: (0, 0)].1 += 1
             if r.isCorrect { dict[sub, default: (0, 0)].0 += 1 }
         }
-        return dict.mapValues { c, t in
+        return dict.mapValues { tuple in
+            let (c, t) = tuple
             let p = t == 0 ? 0 : Double(c) / Double(t)
             return (c, t, p)
         }
