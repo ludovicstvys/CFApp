@@ -1,0 +1,31 @@
+# Xcode
+.DS_Store
+DerivedData/
+*.xcuserstate
+*.xcbkptlist
+
+# User-specific settings
+xcuserdata/
+*.xcuserdatad
+
+# Build products
+build/
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# SwiftPM
+.swiftpm/
+Package.resolved
+
+# CocoaPods (si jamais)
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
