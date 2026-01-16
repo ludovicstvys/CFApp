@@ -22,7 +22,30 @@ struct QuizEngine {
         rng: inout R
     ) -> [PreparedQuestion] {
 
-        let filtered = questions.filter { q in
+        let validQuestions = questions.filter { q in
+            guard q.choices.count >= 2 else {
+                #if DEBUG
+                print("QuizEngine: question ignored (choices<2): \(q.id)")
+                #endif
+                return false
+            }
+            guard !q.correctIndices.isEmpty else {
+                #if DEBUG
+                print("QuizEngine: question ignored (no correctIndices): \(q.id)")
+                #endif
+                return false
+            }
+            let maxIndex = q.choices.count - 1
+            let ok = q.correctIndices.allSatisfy { (0...maxIndex).contains($0) }
+            if !ok {
+                #if DEBUG
+                print("QuizEngine: question ignored (correctIndices out of bounds): \(q.id)")
+                #endif
+            }
+            return ok
+        }
+
+        let filtered = validQuestions.filter { q in
             guard q.level == config.level else { return false }
 
             if config.mode == .random {

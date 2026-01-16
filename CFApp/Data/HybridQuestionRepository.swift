@@ -16,7 +16,17 @@ struct HybridQuestionRepository: QuestionRepository {
         let imported = diskStore.load()
 
         var dict = Dictionary(uniqueKeysWithValues: bundle.map { ($0.id, $0) })
-        for q in imported { dict[q.id] = q }
+        for q in imported {
+            if let existing = dict[q.id] {
+                let existingDate = existing.importedAt ?? .distantPast
+                let newDate = q.importedAt ?? .distantPast
+                if newDate >= existingDate {
+                    dict[q.id] = q
+                }
+            } else {
+                dict[q.id] = q
+            }
+        }
 
         return Array(dict.values)
     }

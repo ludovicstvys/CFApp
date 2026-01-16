@@ -45,13 +45,19 @@ final class QuizViewModel: ObservableObject {
 
     private let repo: QuestionRepository
     private let engine: QuizEngine
+    private let sessionStore: QuizSessionStore
     private var timer: Timer?
     private var startedAt: Date?
     private var rng = SystemRandomNumberGenerator()
 
-    init(repo: QuestionRepository = HybridQuestionRepository(), engine: QuizEngine = QuizEngine()) {
+    init(
+        repo: QuestionRepository = HybridQuestionRepository(),
+        engine: QuizEngine = QuizEngine(),
+        sessionStore: QuizSessionStore = .shared
+    ) {
         self.repo = repo
         self.engine = engine
+        self.sessionStore = sessionStore
     }
 
     var current: QuizEngine.PreparedQuestion? {
@@ -83,6 +89,7 @@ final class QuizViewModel: ObservableObject {
         records = []
         startedAt = Date()
         stopTimer()
+        clearSession()
 
         do {
             let all = try repo.loadAllQuestions()
@@ -96,8 +103,15 @@ final class QuizViewModel: ObservableObject {
             } else {
                 remainingSeconds = nil
             }
+
+            if prepared.isEmpty {
+                clearSession()
+            } else {
+                persistSession()
+            }
         } catch {
             state = .failed(error.localizedDescription)
+            clearSession()
         }
     }
 
@@ -122,6 +136,7 @@ final class QuizViewModel: ObservableObject {
         } else {
             selectedSet.insert(index)
         }
+        persistSession()
     }
 
     func validate() {
@@ -145,6 +160,7 @@ final class QuizViewModel: ObservableObject {
         } else {
             finish()
         }
+        persistSession()
     }
 
     func finish() {
@@ -152,6 +168,7 @@ final class QuizViewModel: ObservableObject {
         stopTimer()
         state = .finished
         persistAttempt()
+        clearSession()
     }
 
     func restart() {
@@ -169,6 +186,7 @@ final class QuizViewModel: ObservableObject {
 
         if config.mode == .revision {
             isSubmitted = true
+            persistSession()
         } else {
             // Mode test : on avance directement après validation/sélection
             goNext()
@@ -204,6 +222,9 @@ final class QuizViewModel: ObservableObject {
                 self.finish()
             } else {
                 self.remainingSeconds = remaining - 1
+                if remaining % 10 == 0 {
+                    self.persistSession()
+                }
             }
         }
     }
@@ -217,6 +238,93 @@ final class QuizViewModel: ObservableObject {
         guard let q = current else { return }
         if records.count > currentIndex { return }
         appendRecord(for: q, selected: Array(selectedSet).sorted())
+    }
+
+    func resumeIfAvailable() -> Bool {
+        guard let session = sessionStore.load() else { return false }
+        guard !session.questions.isEmpty else { return false }
+
+        stopTimer()
+        config = session.config
+        questions = session.questions.map { stored in
+            QuizEngine.PreparedQuestion(
+                id: stored.id,
+                original: stored.original,
+                stem: stored.stem,
+                choices: stored.choices,
+                correctIndices: stored.correctIndices
+            )
+        }
+        currentIndex = min(session.currentIndex, max(0, questions.count - 1))
+        selectedSet = Set(session.selectedSet)
+        isSubmitted = session.isSubmitted
+        records = session.records.map { record in
+            AnswerRecord(
+                id: record.id,
+                questionId: record.questionId,
+                selectedIndices: record.selectedIndices,
+                correctIndices: record.correctIndices,
+                category: record.category,
+                subcategory: record.subcategory,
+                stem: record.stem,
+                choices: record.choices,
+                explanation: record.explanation
+            )
+        }
+        remainingSeconds = session.remainingSeconds
+        startedAt = session.startedAt ?? Date()
+        state = .running
+
+        if config.mode == .test, remainingSeconds != nil {
+            startTimer()
+        }
+
+        return true
+    }
+
+    private func persistSession() {
+        guard state == .running else { return }
+        guard !questions.isEmpty else { return }
+
+        let storedQuestions = questions.map { q in
+            QuizSession.StoredPreparedQuestion(
+                id: q.id,
+                original: q.original,
+                stem: q.stem,
+                choices: q.choices,
+                correctIndices: q.correctIndices
+            )
+        }
+
+        let storedRecords = records.map { r in
+            QuizSession.StoredAnswerRecord(
+                id: r.id,
+                questionId: r.questionId,
+                selectedIndices: r.selectedIndices,
+                correctIndices: r.correctIndices,
+                category: r.category,
+                subcategory: r.subcategory,
+                stem: r.stem,
+                choices: r.choices,
+                explanation: r.explanation
+            )
+        }
+
+        let session = QuizSession(
+            config: config,
+            questions: storedQuestions,
+            currentIndex: currentIndex,
+            selectedSet: Array(selectedSet).sorted(),
+            isSubmitted: isSubmitted,
+            records: storedRecords,
+            remainingSeconds: remainingSeconds,
+            startedAt: startedAt
+        )
+        sessionStore.save(session)
+    }
+
+    private func clearSession() {
+        sessionStore.clear()
     }
 
     private func persistAttempt() {

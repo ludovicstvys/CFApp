@@ -17,6 +17,7 @@ final class HomeViewModel: ObservableObject {
 
     // Catalog (pour dériver les sous-catégories disponibles)
     @Published private(set) var availableSubcategories: [String] = []
+    @Published private(set) var savedSessionSummary: QuizSessionSummary? = nil
 
     private let repo: QuestionRepository
     private var allQuestions: [CFAQuestion] = []
@@ -24,6 +25,7 @@ final class HomeViewModel: ObservableObject {
     init(repo: QuestionRepository = HybridQuestionRepository()) {
         self.repo = repo
         loadCatalog()
+        refreshSavedSession()
     }
 
     var config: QuizConfig {
@@ -75,6 +77,15 @@ final class HomeViewModel: ObservableObject {
 
     func onLevelChanged() {
         refreshAvailableSubcategories()
+    }
+
+    func refreshSavedSession() {
+        savedSessionSummary = QuizSessionStore.shared.loadSummary()
+    }
+
+    func clearSavedSession() {
+        QuizSessionStore.shared.clear()
+        refreshSavedSession()
     }
 
     // MARK: - Private

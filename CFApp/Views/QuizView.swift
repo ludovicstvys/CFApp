@@ -1,7 +1,12 @@
 import SwiftUI
 
 struct QuizView: View {
-    let config: QuizConfig
+    enum StartMode {
+        case new(config: QuizConfig)
+        case resume(fallbackConfig: QuizConfig)
+    }
+
+    let startMode: StartMode
     @StateObject private var vm = QuizViewModel()
 
     var body: some View {
@@ -18,7 +23,7 @@ struct QuizView: View {
 
             case .finished:
                 ResultsView(
-                    config: config,
+                    config: vm.config,
                     score: vm.score,
                     total: vm.total,
                     records: vm.records,
@@ -27,9 +32,18 @@ struct QuizView: View {
                 )
             }
         }
-        .navigationTitle(config.mode.title)
+        .navigationTitle(vm.config.mode.title)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear { vm.start(config: config) }
+        .onAppear {
+            switch startMode {
+            case .new(let config):
+                vm.start(config: config)
+            case .resume(let fallbackConfig):
+                if !vm.resumeIfAvailable() {
+                    vm.start(config: fallbackConfig)
+                }
+            }
+        }
     }
 
     private var loading: some View {
@@ -91,8 +105,8 @@ struct QuizView: View {
                             isMultiSelect: current.correctIndices.count > 1,
                             onTap: {
                                 vm.toggleSelection(idx)
-                                if config.mode == .revision, vm.isSubmitted {
-                                    // pas de haptics si déjà soumis
+                                if vm.config.mode == .revision, vm.isSubmitted {
+                                    // pas de haptics si deja soumis
                                     return
                                 }
                             }
@@ -100,7 +114,7 @@ struct QuizView: View {
                     }
                 }
 
-                if config.mode == .revision, vm.isSubmitted {
+                if vm.config.mode == .revision, vm.isSubmitted {
                     explanationBlock(for: current)
                 }
 
@@ -128,24 +142,24 @@ struct QuizView: View {
 
             if isMulti {
                 Button {
-                    if config.mode == .revision, vm.isSubmitted {
+                    if vm.config.mode == .revision, vm.isSubmitted {
                         vm.goNext()
                         return
                     }
                     vm.validate()
-                    if config.mode == .revision {
+                    if vm.config.mode == .revision {
                         let correct = Set(vm.selectedSet) == Set(current.correctIndices)
                         correct ? Haptics.success() : Haptics.error()
                     }
                 } label: {
-                    Label(config.mode == .test ? "Valider & Suivant" : (vm.isSubmitted ? "Suivant" : "Valider"), systemImage: "checkmark")
+                    Label(vm.config.mode == .test ? "Valider & Suivant" : (vm.isSubmitted ? "Suivant" : "Valider"), systemImage: "checkmark")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
+                .disabled(vm.config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
             } else {
                 Button {
-                    if config.mode == .revision {
+                    if vm.config.mode == .revision {
                         vm.goNext()
                     } else {
                         vm.validate()
@@ -155,13 +169,13 @@ struct QuizView: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
+                .disabled(vm.config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
             }
         }
     }
 
     private func feedbackCorrectness(for idx: Int) -> Bool? {
-        guard config.mode == .revision, vm.isSubmitted, let current = vm.current else { return nil }
+        guard vm.config.mode == .revision, vm.isSubmitted, let current = vm.current else { return nil }
         if current.correctIndices.contains(idx) { return true }
         if vm.selectedSet.contains(idx) { return false }
         return nil

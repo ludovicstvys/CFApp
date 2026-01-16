@@ -3,11 +3,36 @@ import SwiftUI
 struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
     @State private var startQuiz = false
+    @State private var resumeQuiz = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 header
+
+                if let summary = vm.savedSessionSummary {
+                    GroupBox("Reprendre une session") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("\(summary.config.mode.title) • \(summary.config.level.title)")
+                                .font(.subheadline.weight(.semibold))
+                            Text("Progression : \(min(summary.currentIndex + 1, summary.total))/\(summary.total)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            PrimaryButton(title: "Reprendre", systemImage: "arrow.uturn.right") {
+                                resumeQuiz = true
+                            }
+
+                            Button(role: .destructive) {
+                                vm.clearSavedSession()
+                            } label: {
+                                Text("Supprimer la session")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
 
                 GroupBox("Mode") {
                     VStack(alignment: .leading, spacing: 10) {
@@ -43,6 +68,13 @@ struct HomeView: View {
                         onSelectAll: vm.selectAllCategories,
                         onClear: vm.clearCategories
                     )
+                    .disabled(vm.mode == .random)
+
+                    if vm.mode == .random {
+                        Text("En mode Aléatoire, les catégories sont ignorées.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 GroupBox("Sous-catégories (optionnel)") {
@@ -53,6 +85,13 @@ struct HomeView: View {
                         onSelectAll: vm.selectAllSubcategories,
                         onClear: vm.clearSubcategories
                     )
+                    .disabled(vm.mode == .random)
+
+                    if vm.mode == .random {
+                        Text("En mode Aléatoire, les sous-catégories sont ignorées.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 GroupBox("Paramètres du quiz") {
@@ -84,8 +123,12 @@ struct HomeView: View {
         .navigationTitle("CFA Quiz")
         .navigationBarTitleDisplayMode(.large)
         .navigationDestination(isPresented: $startQuiz) {
-            QuizView(config: vm.config)
+            QuizView(startMode: .new(config: vm.config))
         }
+        .navigationDestination(isPresented: $resumeQuiz) {
+            QuizView(startMode: .resume(fallbackConfig: vm.config))
+        }
+        .onAppear { vm.refreshSavedSession() }
     }
 
     private var header: some View {

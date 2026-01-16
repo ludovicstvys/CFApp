@@ -18,6 +18,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
     let correctIndices: [Int]
     let explanation: String
     let difficulty: Int?
+    let importedAt: Date?
 
     init(
         id: String,
@@ -28,7 +29,8 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         choices: [String],
         correctIndices: [Int],
         explanation: String,
-        difficulty: Int? = nil
+        difficulty: Int? = nil,
+        importedAt: Date? = nil
     ) {
         self.id = id
         self.level = level
@@ -39,12 +41,13 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         self.correctIndices = correctIndices.sorted()
         self.explanation = explanation
         self.difficulty = difficulty
+        self.importedAt = importedAt
     }
 
     // MARK: - Codable (rétrocompat)
 
     private enum CodingKeys: String, CodingKey {
-        case id, level, category, subcategory, stem, choices, correctIndices, answerIndex, explanation, difficulty
+        case id, level, category, subcategory, stem, choices, correctIndices, answerIndex, explanation, difficulty, importedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -58,6 +61,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         choices = try c.decode([String].self, forKey: .choices)
         explanation = try c.decode(String.self, forKey: .explanation)
         difficulty = try c.decodeIfPresent(Int.self, forKey: .difficulty)
+        importedAt = try c.decodeIfPresent(Date.self, forKey: .importedAt)
 
         if let multi = try c.decodeIfPresent([Int].self, forKey: .correctIndices), !multi.isEmpty {
             correctIndices = multi.sorted()
@@ -80,6 +84,7 @@ struct CFAQuestion: Identifiable, Codable, Hashable {
         try c.encode(correctIndices, forKey: .correctIndices)
         try c.encode(explanation, forKey: .explanation)
         try c.encodeIfPresent(difficulty, forKey: .difficulty)
+        try c.encodeIfPresent(importedAt, forKey: .importedAt)
     }
 
     var isMultiAnswer: Bool { correctIndices.count > 1 }

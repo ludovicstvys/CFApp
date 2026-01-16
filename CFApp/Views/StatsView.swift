@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(Charts)
+import Charts
+#endif
 
 struct StatsView: View {
     @StateObject private var vm = StatsViewModel()
@@ -14,6 +17,73 @@ struct StatsView: View {
                 }
                 .listRowInsets(EdgeInsets())
                 .padding(.vertical, 8)
+
+                HStack(spacing: 12) {
+                    StatPillView(title: "Streak", value: "\(vm.streakDays) j", systemImage: "flame.fill")
+                    StatPillView(title: "Temps/Q", value: formatTime(vm.averageSecondsPerQuestion), systemImage: "timer")
+                }
+                .listRowInsets(EdgeInsets())
+                .padding(.vertical, 6)
+            }
+
+            Section("Tendances") {
+                #if canImport(Charts)
+                if #available(iOS 16.0, *) {
+                    if vm.accuracySeries.isEmpty {
+                        Text("Pas assez de données pour afficher un graphique.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Chart(vm.accuracySeries) { point in
+                            LineMark(
+                                x: .value("Date", point.date),
+                                y: .value("Précision", point.accuracy)
+                            )
+                            PointMark(
+                                x: .value("Date", point.date),
+                                y: .value("Précision", point.accuracy)
+                            )
+                        }
+                        .chartYScale(domain: 0...1)
+                        .frame(height: 200)
+                    }
+                } else {
+                    Text("Graphiques disponibles à partir d’iOS 16.")
+                        .foregroundStyle(.secondary)
+                }
+                #else
+                Text("Graphiques non disponibles sur cette plateforme.")
+                    .foregroundStyle(.secondary)
+                #endif
+            }
+
+            Section("Précision par catégorie") {
+                if vm.categoryAccuracy.isEmpty {
+                    Text("Aucune donnée par catégorie.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    #if canImport(Charts)
+                    if #available(iOS 16.0, *) {
+                        Chart(vm.categoryAccuracy) { point in
+                            BarMark(
+                                x: .value("Catégorie", point.category.shortName),
+                                y: .value("Précision", point.accuracy)
+                            )
+                        }
+                        .chartYScale(domain: 0...1)
+                        .frame(height: 220)
+                    }
+                    #endif
+
+                    ForEach(vm.categoryAccuracy) { point in
+                        HStack {
+                            Text(point.category.shortName)
+                            Spacer()
+                            Text("\(Int((point.accuracy * 100).rounded()))%")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
 
             Section("Historique") {
@@ -75,5 +145,13 @@ struct StatsView: View {
         df.timeStyle = .short
         let mins = max(1, a.durationSeconds / 60)
         return "\(df.string(from: a.date)) • \(mins) min"
+    }
+
+    private func formatTime(_ seconds: Double) -> String {
+        guard seconds > 0 else { return "0:00" }
+        let total = Int(seconds.rounded())
+        let m = total / 60
+        let s = total % 60
+        return String(format: "%d:%02d", m, s)
     }
 }

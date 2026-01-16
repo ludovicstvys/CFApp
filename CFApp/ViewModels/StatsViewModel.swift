@@ -5,6 +5,18 @@ import Combine
 final class StatsViewModel: ObservableObject {
     @Published private(set) var attempts: [QuizAttempt] = []
 
+    struct AttemptPoint: Identifiable {
+        let id = UUID()
+        let date: Date
+        let accuracy: Double
+    }
+
+    struct CategoryPoint: Identifiable {
+        let id = UUID()
+        let category: CFACategory
+        let accuracy: Double
+    }
+
     func refresh() {
         attempts = StatsStore.shared.loadAttempts()
     }
@@ -26,5 +38,48 @@ final class StatsViewModel: ObservableObject {
     var bestScorePct: Double {
         guard let best = attempts.map({ Double($0.score) / Double(max(1, $0.total)) }).max() else { return 0 }
         return best
+    }
+
+    var averageSecondsPerQuestion: Double {
+        let totalQuestions = attempts.reduce(0) { $0 + $1.total }
+        let totalSeconds = attempts.reduce(0) { $0 + $1.durationSeconds }
+        guard totalQuestions > 0 else { return 0 }
+        return Double(totalSeconds) / Double(totalQuestions)
+    }
+
+    var streakDays: Int {
+        let calendar = Calendar.current
+        let days = Set(attempts.map { calendar.startOfDay(for: $0.date) })
+        guard let latest = days.max() else { return 0 }
+        guard calendar.isDateInToday(latest) else { return 0 }
+
+        var streak = 0
+        var day = latest
+        while days.contains(day) {
+            streak += 1
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day) else { break }
+            day = previous
+        }
+        return streak
+    }
+
+    var accuracySeries: [AttemptPoint] {
+        attempts
+            .sorted { $0.date < $1.date }
+            .map { AttemptPoint(date: $0.date, accuracy: Double($0.score) / Double(max(1, $0.total))) }
+    }
+
+    var categoryAccuracy: [CategoryPoint] {
+        var totals: [CFACategory: (correct: Int, total: Int)] = [:]
+        for attempt in attempts {
+            for (cat, result) in attempt.perCategory {
+                totals[cat, default: (0, 0)].0 += result.correct
+                totals[cat, default: (0, 0)].1 += result.total
+            }
+        }
+        return totals.map { cat, tuple in
+            let acc = tuple.total == 0 ? 0 : Double(tuple.correct) / Double(tuple.total)
+            return CategoryPoint(category: cat, accuracy: acc)
+        }.sorted { $0.category.rawValue < $1.category.rawValue }
     }
 }

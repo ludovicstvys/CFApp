@@ -1,6 +1,6 @@
 import Foundation
 
-struct QuizConfig: Hashable {
+struct QuizConfig: Hashable, Codable {
     let level: CFALevel
     let mode: QuizMode
     let categories: Set<CFACategory>

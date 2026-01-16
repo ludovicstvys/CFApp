@@ -61,8 +61,9 @@ struct CSVQuestionImporter {
 
         for (i, row) in rows.enumerated() where i >= startIndex {
             do {
-                let q = try parseQuestion(row: row, header: header)
-                questions.append(q)
+                let result = try parseQuestion(row: row, header: header)
+                questions.append(result.question)
+                warnings.append(contentsOf: result.warnings.map { "Ligne \(i + 1): \($0)" })
             } catch {
                 errors.append("Ligne \(i + 1): \(error.localizedDescription)")
             }
@@ -109,7 +110,8 @@ struct CSVQuestionImporter {
         return nil
     }
 
-    private func parseQuestion(row: [String], header: [String: Int]) throws -> CFAQuestion {
+    private func parseQuestion(row: [String], header: [String: Int]) throws -> (question: CFAQuestion, warnings: [String]) {
+        var warnings: [String] = []
         let idRaw = field(row, header: header, keys: ["id", "qid", "question_id"], fallbackIndex: 0) ?? ""
         let id = idRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? UUID().uuidString : idRaw.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -171,12 +173,18 @@ struct CSVQuestionImporter {
 
         let explanation = (field(row, header: header, keys: ["explanation", "rationale", "explication"], fallbackIndex: expIdx) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        if explanation.isEmpty {
+            warnings.append("explication manquante")
+        }
 
         let diffStr = (field(row, header: header, keys: ["difficulty", "diff"], fallbackIndex: diffIdx) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let difficulty = Int(diffStr)
+        if difficulty == nil, !diffStr.isEmpty {
+            warnings.append("difficulty invalide (ignorée)")
+        }
 
-        return CFAQuestion(
+        let question = CFAQuestion(
             id: id,
             level: level,
             category: category,
@@ -185,8 +193,10 @@ struct CSVQuestionImporter {
             choices: choices,
             correctIndices: correctIndices.sorted(),
             explanation: explanation.isEmpty ? "—" : explanation,
-            difficulty: difficulty
+            difficulty: difficulty,
+            importedAt: Date()
         )
+        return (question, warnings)
     }
 
     private func parseAnswerIndices(_ raw: String, choicesCount: Int) -> [Int] {

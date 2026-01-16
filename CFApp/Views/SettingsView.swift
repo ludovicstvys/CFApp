@@ -1,7 +1,11 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeManager
+    @State private var showExporter = false
+    @State private var exportDocument: CSVDocument? = nil
+    @State private var exportName: String = "export"
 
     var body: some View {
         Form {
@@ -27,11 +31,74 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Export") {
+                Button {
+                    exportQuestions()
+                } label: {
+                    Label("Exporter les questions (CSV)", systemImage: "square.and.arrow.up")
+                }
+
+                Button {
+                    exportAttempts()
+                } label: {
+                    Label("Exporter les statistiques (CSV)", systemImage: "chart.line.uptrend.xyaxis")
+                }
+            }
+
             Section("À venir (idées)") {
                 Text("• Gamification (streak, badges)\n• Synchronisation multi-appareils\n• Génération de tests par LOS\n• Import/export CSV/JSON\n• Mode “mock exam” multi-sessions")
                     .foregroundStyle(.secondary)
             }
         }
         .navigationTitle("Réglages")
+        .fileExporter(
+            isPresented: $showExporter,
+            document: exportDocument ?? CSVDocument(text: ""),
+            contentType: .commaSeparatedText,
+            defaultFilename: exportName
+        ) { _ in
+            exportDocument = nil
+        }
+    }
+
+    private func exportQuestions() {
+        let repo = HybridQuestionRepository()
+        let questions = (try? repo.loadAllQuestions()) ?? []
+        let csv = CSVExportService.exportQuestions(questions)
+        exportDocument = CSVDocument(text: csv)
+        exportName = "questions"
+        showExporter = true
+    }
+
+    private func exportAttempts() {
+        let attempts = StatsStore.shared.loadAttempts()
+        let csv = CSVExportService.exportAttempts(attempts)
+        exportDocument = CSVDocument(text: csv)
+        exportName = "attempts"
+        showExporter = true
+    }
+}
+
+struct CSVDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.commaSeparatedText] }
+
+    var text: String
+
+    init(text: String = "") {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        if let data = configuration.file.regularFileContents,
+           let string = String(data: data, encoding: .utf8) {
+            text = string
+        } else {
+            text = ""
+        }
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = text.data(using: .utf8) ?? Data()
+        return .init(regularFileWithContents: data)
     }
 }

@@ -6,6 +6,9 @@ struct CSVImportView: View {
     @State private var status: Status = .idle
     @State private var importedCount: Int = 0
     @State private var errors: [String] = []
+    @State private var warnings: [String] = []
+    @State private var showReportExporter = false
+    @State private var reportDocument: TextDocument? = nil
 
     enum Status: Equatable {
         case idle
@@ -75,6 +78,30 @@ struct CSVImportView: View {
                 }
             }
 
+            if !warnings.isEmpty {
+                Section("Avertissements") {
+                    ForEach(warnings.prefix(30), id: \.self) { w in
+                        Text(w).font(.footnote)
+                    }
+                    if warnings.count > 30 {
+                        Text("… \(warnings.count - 30) avertissements supplémentaires")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            if !errors.isEmpty || !warnings.isEmpty {
+                Section("Rapport") {
+                    Button {
+                        reportDocument = TextDocument(text: buildReport())
+                        showReportExporter = true
+                    } label: {
+                        Label("Exporter le rapport", systemImage: "doc.plaintext")
+                    }
+                }
+            }
+
             Section("Gestion") {
                 Text("Questions importées actuellement : \(QuestionDiskStore.shared.load().count)")
                     .foregroundStyle(.secondary)
@@ -90,6 +117,14 @@ struct CSVImportView: View {
             }
         }
         .navigationTitle("Import CSV")
+        .fileExporter(
+            isPresented: $showReportExporter,
+            document: reportDocument ?? TextDocument(text: ""),
+            contentType: .plainText,
+            defaultFilename: "import_report"
+        ) { _ in
+            reportDocument = nil
+        }
         .fileImporter(
             isPresented: $showImporter,
             allowedContentTypes: [UTType.commaSeparatedText, .plainText],
@@ -108,6 +143,7 @@ struct CSVImportView: View {
     private func importCSV(url: URL) {
         status = .importing
         errors = []
+        warnings = []
         importedCount = 0
 
         Task {
@@ -128,6 +164,7 @@ struct CSVImportView: View {
                 await MainActor.run {
                     importedCount = result.questions.count
                     errors = result.errors
+                    warnings = result.warnings
                     status = .success
                 }
             } catch {
@@ -136,5 +173,60 @@ struct CSVImportView: View {
                 }
             }
         }
+    }
+
+    private func buildReport() -> String {
+        var lines: [String] = []
+        lines.append("Import CSV - Rapport")
+        lines.append("Statut: \(statusText())")
+        lines.append("Questions importées: \(importedCount)")
+        lines.append("")
+
+        if !errors.isEmpty {
+            lines.append("Erreurs:")
+            lines.append(contentsOf: errors.map { "- \($0)" })
+            lines.append("")
+        }
+
+        if !warnings.isEmpty {
+            lines.append("Avertissements:")
+            lines.append(contentsOf: warnings.map { "- \($0)" })
+            lines.append("")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private func statusText() -> String {
+        switch status {
+        case .idle: return "idle"
+        case .importing: return "importing"
+        case .success: return "success"
+        case .failed(let msg): return "failed (\(msg))"
+        }
+    }
+}
+
+struct TextDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.plainText] }
+
+    var text: String
+
+    init(text: String = "") {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        if let data = configuration.file.regularFileContents,
+           let string = String(data: data, encoding: .utf8) {
+            text = string
+        } else {
+            text = ""
+        }
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = text.data(using: .utf8) ?? Data()
+        return .init(regularFileWithContents: data)
     }
 }
