@@ -24,6 +24,11 @@ struct QuizEngine {
 
         let filtered = questions.filter { q in
             guard q.level == config.level else { return false }
+
+            if config.mode == .random {
+                return true
+            }
+
             guard config.categories.contains(q.category) else { return false }
 
             if !config.subcategories.isEmpty {

@@ -145,7 +145,11 @@ struct QuizView: View {
                 .disabled(config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
             } else {
                 Button {
-                    vm.goNext()
+                    if config.mode == .revision {
+                        vm.goNext()
+                    } else {
+                        vm.validate()
+                    }
                 } label: {
                     Label(vm.currentIndex + 1 == vm.total ? "Terminer" : "Suivant", systemImage: "arrow.right")
                         .frame(maxWidth: .infinity)

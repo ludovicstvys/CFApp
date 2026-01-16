@@ -200,6 +200,7 @@ final class QuizViewModel: ObservableObject {
 
             if remaining <= 1 {
                 self.remainingSeconds = 0
+                self.recordCurrentIfNeeded()
                 self.finish()
             } else {
                 self.remainingSeconds = remaining - 1
@@ -212,9 +213,15 @@ final class QuizViewModel: ObservableObject {
         timer = nil
     }
 
+    private func recordCurrentIfNeeded() {
+        guard let q = current else { return }
+        if records.count > currentIndex { return }
+        appendRecord(for: q, selected: Array(selectedSet).sorted())
+    }
+
     private func persistAttempt() {
         let duration = Int(Date().timeIntervalSince(startedAt ?? Date()))
-        let categories = Array(config.categories).sorted { $0.rawValue < $1.rawValue }
+        let categories = Array(Set(records.map { $0.category })).sorted { $0.rawValue < $1.rawValue }
 
         // Per category breakdown
         var perCat: [CFACategory: QuizAttempt.CategoryResult] = [:]

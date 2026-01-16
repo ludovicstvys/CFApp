@@ -22,7 +22,7 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
         case .test:
             return "Score à la fin (comme un mock)."
         case .random:
-            return "Mélange catégories + questions."
+            return "Mélange toutes les catégories du niveau."
         }
     }
 }
