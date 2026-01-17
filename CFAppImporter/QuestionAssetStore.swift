@@ -6,35 +6,8 @@ final class QuestionAssetStore {
     private init() {}
 
     private var assetsDir: URL {
-        let fm = FileManager.default
-        let root = repoRootURL() ?? URL(fileURLWithPath: fm.currentDirectoryPath)
-        let appDir = root.appendingPathComponent("CFApp", isDirectory: true)
-        if !fm.fileExists(atPath: appDir.path) {
-            try? fm.createDirectory(at: appDir, withIntermediateDirectories: true)
-        }
-        let assets = appDir.appendingPathComponent("ImportedAssets", isDirectory: true)
-        if !fm.fileExists(atPath: assets.path) {
-            try? fm.createDirectory(at: assets, withIntermediateDirectories: true)
-        }
-        return assets
-    }
-
-    private func repoRootURL() -> URL? {
-        let env = ProcessInfo.processInfo.environment["CFAPP_REPO_ROOT"]
-        if let env, !env.isEmpty {
-            return URL(fileURLWithPath: env)
-        }
-
-        let fm = FileManager.default
-        var current = URL(fileURLWithPath: fm.currentDirectoryPath)
-        while current.path != "/" {
-            let marker = current.appendingPathComponent("CFApp.xcodeproj").path
-            if fm.fileExists(atPath: marker) {
-                return current
-            }
-            current.deleteLastPathComponent()
-        }
-        return nil
+        ImportPaths.ensureDirectories()
+        return ImportPaths.assetsDir
     }
 
     func saveImage(from sourceURL: URL, preferredName: String, questionId: String) -> String? {

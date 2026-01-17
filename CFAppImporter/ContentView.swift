@@ -11,7 +11,6 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @StateObject private var vm = ImporterViewModel()
-    @State private var showImporter = false
     @State private var showReportExporter = false
 
     var body: some View {
@@ -19,14 +18,30 @@ struct ContentView: View {
             Text("Import ZIP - Questions CFA")
                 .font(.title2.weight(.bold))
 
-            Text("Selectionnez un ZIP contenant un CSV + images. Les questions seront ajoutees au stockage local de l'app.")
+            Text("Placez un ZIP (CSV + images) dans le dossier d'import, puis lancez l'import.")
                 .foregroundStyle(.secondary)
+
+            GroupBox("Dossier d'import") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(vm.importInboxPath)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+
+                    Text("Deposez un ZIP dans ce dossier. L'app importe le ZIP le plus recent.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Astuce: supprimez les anciens ZIPs ou renommez le nouveau fichier si besoin.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             HStack(spacing: 12) {
                 Button {
-                    showImporter = true
+                    vm.importFromInbox()
                 } label: {
-                    Label("Choisir un ZIP...", systemImage: "square.and.arrow.down")
+                    Label("Importer depuis le dossier", systemImage: "square.and.arrow.down")
                 }
 
                 if vm.status == .importing {
@@ -90,17 +105,6 @@ struct ContentView: View {
         }
         .padding(20)
         .frame(minWidth: 620, minHeight: 520)
-        .fileImporter(
-            isPresented: $showImporter,
-            allowedContentTypes: [UTType.zip],
-            allowsMultipleSelection: false
-        ) { result in
-            if case .success(let urls) = result, let url = urls.first {
-                vm.importZIP(url: url)
-            } else if case .failure(let error) = result {
-                vm.fail(with: error.localizedDescription)
-            }
-        }
         .fileExporter(
             isPresented: $showReportExporter,
             document: TextDocument(text: vm.buildReport()),
@@ -123,22 +127,35 @@ final class ImporterViewModel: ObservableObject {
     @Published var errors: [String] = []
     @Published var warnings: [String] = []
 
+    var importInboxPath: String {
+        ImportPaths.importInbox.path
+    }
+
     var hasReport: Bool {
         !errors.isEmpty || !warnings.isEmpty || status != .idle
     }
 
-    func importZIP(url: URL) {
+    func importFromInbox() {
         status = .importing
         errors = []
         warnings = []
 
         Task {
             do {
-                let canAccess = url.startAccessingSecurityScopedResource()
-                defer { if canAccess { url.stopAccessingSecurityScopedResource() } }
+                guard ImportPaths.isValidRepoRoot(ImportPaths.repoRoot) else {
+                    status = .failed("Repo introuvable. Definissez CFAPP_REPO_ROOT.")
+                    return
+                }
+
+                ImportPaths.ensureDirectories()
+                guard let zipURL = findLatestZip(in: ImportPaths.importInbox) else {
+                    status = .failed("Aucun ZIP trouve dans le dossier d'import.")
+                    return
+                }
 
                 let importer = ZipQuestionImporter()
-                let result = try importer.importQuestions(from: url)
+                let result = try importer.importQuestions(from: zipURL)
+                removeZipAfterImport(zipURL)
 
                 let existing = QuestionDiskStore.shared.load()
                 var dict = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
@@ -197,6 +214,30 @@ final class ImporterViewModel: ObservableObject {
         case .success: return "success"
         case .failed(let msg): return "failed (\(msg))"
         }
+    }
+
+    private func findLatestZip(in dir: URL) -> URL? {
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(
+            at: dir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return nil
+        }
+
+        let zips = items.filter { $0.pathExtension.lowercased() == "zip" }
+        let sorted = zips.sorted { lhs, rhs in
+            let lDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let rDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return lDate > rDate
+        }
+        return sorted.first
+    }
+
+    private func removeZipAfterImport(_ url: URL) {
+        let fm = FileManager.default
+        try? fm.removeItem(at: url)
     }
 }
 
