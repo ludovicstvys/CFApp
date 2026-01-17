@@ -6,7 +6,7 @@ struct HybridQuestionRepository: QuestionRepository {
     let bundleStore: LocalQuestionStore
     let diskStore: QuestionDiskStore
 
-    init(bundleResourceName: String = "SampleQuestions_L1", diskStore: QuestionDiskStore = .shared) {
+    init(bundleResourceName: String = "ImportedQuestions", diskStore: QuestionDiskStore = .shared) {
         self.bundleStore = LocalQuestionStore(resourceName: bundleResourceName)
         self.diskStore = diskStore
     }

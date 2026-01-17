@@ -45,7 +45,10 @@ final class QuestionAssetStore {
     }
 
     func imageURL(for name: String) -> URL {
-        assetsDir.appendingPathComponent(name)
+        if let bundled = Bundle.main.url(forResource: name, withExtension: nil, subdirectory: "ImportedAssets") {
+            return bundled
+        }
+        return assetsDir.appendingPathComponent(name)
     }
 
     func loadImage(named name: String) -> PlatformImage? {

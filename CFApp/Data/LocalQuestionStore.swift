@@ -24,7 +24,11 @@ struct LocalQuestionStore: QuestionRepository {
     }
 
     func loadAllQuestions() throws -> [CFAQuestion] {
-        guard let url = Bundle.main.url(forResource: resourceName, withExtension: "json") else {
+        let primaryURL = Bundle.main.url(forResource: resourceName, withExtension: "json")
+        let fallbackURL = resourceName == "SampleQuestions_L1"
+            ? nil
+            : Bundle.main.url(forResource: "SampleQuestions_L1", withExtension: "json")
+        guard let url = primaryURL ?? fallbackURL else {
             throw StoreError.missingResource("\(resourceName).json")
         }
         do {
