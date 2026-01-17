@@ -1,5 +1,9 @@
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 struct QuestionCardView: View {
     let category: CFACategory
@@ -24,10 +28,17 @@ struct QuestionCardView: View {
             }
 
             if let imageName, let image = QuestionAssetStore.shared.loadImage(named: imageName) {
+#if canImport(UIKit)
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+#elseif canImport(AppKit)
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+#endif
             }
 
             Text(stem)

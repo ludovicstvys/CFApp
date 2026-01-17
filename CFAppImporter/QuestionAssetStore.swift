@@ -1,13 +1,6 @@
 import Foundation
-#if canImport(UIKit)
-import UIKit
-public typealias PlatformImage = UIImage
-#elseif canImport(AppKit)
 import AppKit
-public typealias PlatformImage = NSImage
-#endif
 
-/// Stocke les images importees sur disque (Application Support).
 final class QuestionAssetStore {
     static let shared = QuestionAssetStore()
     private init() {}
@@ -42,21 +35,6 @@ final class QuestionAssetStore {
         } catch {
             return nil
         }
-    }
-
-    func imageURL(for name: String) -> URL {
-        assetsDir.appendingPathComponent(name)
-    }
-
-    func loadImage(named name: String) -> PlatformImage? {
-        let url = imageURL(for: name)
-#if canImport(UIKit)
-        return UIImage(contentsOfFile: url.path)
-#elseif canImport(AppKit)
-        return NSImage(contentsOf: url)
-#else
-        return nil
-#endif
     }
 
     func clear() {

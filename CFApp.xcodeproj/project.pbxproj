@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D93D89912F1B0156008C99D0 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = D93D89902F1B0156008C99D0 /* ZIPFoundation */; };
+		D93D89A02F1B1C0008C99D0 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = D93D89902F1B0156008C99D0 /* ZIPFoundation */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D90C54E22F1994B600880D13 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +26,29 @@
 			remoteGlobalIDString = D90C54D12F1994AE00880D13;
 			remoteInfo = CFApp;
 		};
+		D93D88562F1AF89F008C99D0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D90C54CA2F1994AD00880D13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D93D88462F1AF89D008C99D0;
+			remoteInfo = CFAppImporter;
+		};
+		D93D88602F1AF89F008C99D0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D90C54CA2F1994AD00880D13 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D93D88462F1AF89D008C99D0;
+			remoteInfo = CFAppImporter;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		D90C54D22F1994AE00880D13 /* CFApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CFApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D90C54E12F1994B600880D13 /* CFAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CFAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D90C54EB2F1994B600880D13 /* CFAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CFAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D93D88472F1AF89D008C99D0 /* CFAppImporter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CFAppImporter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D93D88552F1AF89F008C99D0 /* CFAppImporterTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CFAppImporterTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		D93D885F2F1AF89F008C99D0 /* CFAppImporterUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CFAppImporterUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -45,6 +67,21 @@
 			path = CFAppUITests;
 			sourceTree = "<group>";
 		};
+		D93D88482F1AF89D008C99D0 /* CFAppImporter */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CFAppImporter;
+			sourceTree = "<group>";
+		};
+		D93D88582F1AF89F008C99D0 /* CFAppImporterTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CFAppImporterTests;
+			sourceTree = "<group>";
+		};
+		D93D88622F1AF89F008C99D0 /* CFAppImporterUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CFAppImporterUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +89,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D93D89912F1B0156008C99D0 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -69,6 +107,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D93D88442F1AF89D008C99D0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D93D89A02F1B1C0008C99D0 /* ZIPFoundation in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D88522F1AF89F008C99D0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D885C2F1AF89F008C99D0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +138,10 @@
 				D90C54D42F1994AE00880D13 /* CFApp */,
 				D90C54E42F1994B600880D13 /* CFAppTests */,
 				D90C54EE2F1994B600880D13 /* CFAppUITests */,
+				D93D88482F1AF89D008C99D0 /* CFAppImporter */,
+				D93D88582F1AF89F008C99D0 /* CFAppImporterTests */,
+				D93D88622F1AF89F008C99D0 /* CFAppImporterUITests */,
+				D93D898F2F1B0156008C99D0 /* Frameworks */,
 				D90C54D32F1994AE00880D13 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +152,18 @@
 				D90C54D22F1994AE00880D13 /* CFApp.app */,
 				D90C54E12F1994B600880D13 /* CFAppTests.xctest */,
 				D90C54EB2F1994B600880D13 /* CFAppUITests.xctest */,
+				D93D88472F1AF89D008C99D0 /* CFAppImporter.app */,
+				D93D88552F1AF89F008C99D0 /* CFAppImporterTests.xctest */,
+				D93D885F2F1AF89F008C99D0 /* CFAppImporterUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		D93D898F2F1B0156008C99D0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -112,6 +186,7 @@
 			);
 			name = CFApp;
 			packageProductDependencies = (
+				D93D89902F1B0156008C99D0 /* ZIPFoundation */,
 			);
 			productName = CFApp;
 			productReference = D90C54D22F1994AE00880D13 /* CFApp.app */;
@@ -163,6 +238,75 @@
 			productReference = D90C54EB2F1994B600880D13 /* CFAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		D93D88462F1AF89D008C99D0 /* CFAppImporter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D93D88672F1AF89F008C99D0 /* Build configuration list for PBXNativeTarget "CFAppImporter" */;
+			buildPhases = (
+				D93D88432F1AF89D008C99D0 /* Sources */,
+				D93D88442F1AF89D008C99D0 /* Frameworks */,
+				D93D88452F1AF89D008C99D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D93D88482F1AF89D008C99D0 /* CFAppImporter */,
+			);
+			name = CFAppImporter;
+			packageProductDependencies = (
+				D93D89902F1B0156008C99D0 /* ZIPFoundation */,
+			);
+			productName = CFAppImporter;
+			productReference = D93D88472F1AF89D008C99D0 /* CFAppImporter.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D93D88542F1AF89F008C99D0 /* CFAppImporterTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D93D886A2F1AF89F008C99D0 /* Build configuration list for PBXNativeTarget "CFAppImporterTests" */;
+			buildPhases = (
+				D93D88512F1AF89F008C99D0 /* Sources */,
+				D93D88522F1AF89F008C99D0 /* Frameworks */,
+				D93D88532F1AF89F008C99D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D93D88572F1AF89F008C99D0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D93D88582F1AF89F008C99D0 /* CFAppImporterTests */,
+			);
+			name = CFAppImporterTests;
+			packageProductDependencies = (
+			);
+			productName = CFAppImporterTests;
+			productReference = D93D88552F1AF89F008C99D0 /* CFAppImporterTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D93D885E2F1AF89F008C99D0 /* CFAppImporterUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D93D886D2F1AF89F008C99D0 /* Build configuration list for PBXNativeTarget "CFAppImporterUITests" */;
+			buildPhases = (
+				D93D885B2F1AF89F008C99D0 /* Sources */,
+				D93D885C2F1AF89F008C99D0 /* Frameworks */,
+				D93D885D2F1AF89F008C99D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D93D88612F1AF89F008C99D0 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D93D88622F1AF89F008C99D0 /* CFAppImporterUITests */,
+			);
+			name = CFAppImporterUITests;
+			packageProductDependencies = (
+			);
+			productName = CFAppImporterUITests;
+			productReference = D93D885F2F1AF89F008C99D0 /* CFAppImporterUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +328,17 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = D90C54D12F1994AE00880D13;
 					};
+					D93D88462F1AF89D008C99D0 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					D93D88542F1AF89F008C99D0 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D93D88462F1AF89D008C99D0;
+					};
+					D93D885E2F1AF89F008C99D0 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = D93D88462F1AF89D008C99D0;
+					};
 				};
 			};
 			buildConfigurationList = D90C54CD2F1994AD00880D13 /* Build configuration list for PBXProject "CFApp" */;
@@ -195,6 +350,9 @@
 			);
 			mainGroup = D90C54C92F1994AD00880D13;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D93D898E2F1B004B008C99D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D90C54D32F1994AE00880D13 /* Products */;
 			projectDirPath = "";
@@ -203,6 +361,9 @@
 				D90C54D12F1994AE00880D13 /* CFApp */,
 				D90C54E02F1994B600880D13 /* CFAppTests */,
 				D90C54EA2F1994B600880D13 /* CFAppUITests */,
+				D93D88462F1AF89D008C99D0 /* CFAppImporter */,
+				D93D88542F1AF89F008C99D0 /* CFAppImporterTests */,
+				D93D885E2F1AF89F008C99D0 /* CFAppImporterUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +384,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		D90C54E92F1994B600880D13 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D88452F1AF89D008C99D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D88532F1AF89F008C99D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D885D2F1AF89F008C99D0 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +435,27 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D93D88432F1AF89D008C99D0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D88512F1AF89F008C99D0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D93D885B2F1AF89F008C99D0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +468,16 @@
 			isa = PBXTargetDependency;
 			target = D90C54D12F1994AE00880D13 /* CFApp */;
 			targetProxy = D90C54EC2F1994B600880D13 /* PBXContainerItemProxy */;
+		};
+		D93D88572F1AF89F008C99D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D93D88462F1AF89D008C99D0 /* CFAppImporter */;
+			targetProxy = D93D88562F1AF89F008C99D0 /* PBXContainerItemProxy */;
+		};
+		D93D88612F1AF89F008C99D0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D93D88462F1AF89D008C99D0 /* CFAppImporter */;
+			targetProxy = D93D88602F1AF89F008C99D0 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -414,13 +627,14 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = 7;
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Debug;
@@ -456,13 +670,14 @@
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SUPPORTED_PLATFORMS = "macosx xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TARGETED_DEVICE_FAMILY = 7;
 				XROS_DEPLOYMENT_TARGET = 26.2;
 			};
 			name = Release;
@@ -565,6 +780,188 @@
 			};
 			name = Release;
 		};
+		D93D88682F1AF89F008C99D0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = SennaIM.CFAppImporter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		D93D88692F1AF89F008C99D0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = SennaIM.CFAppImporter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		D93D886B2F1AF89F008C99D0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = SennaIM.CFAppImporterTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CFAppImporter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CFAppImporter";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		D93D886C2F1AF89F008C99D0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = SennaIM.CFAppImporterTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CFAppImporter.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CFAppImporter";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
+		D93D886E2F1AF89F008C99D0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = SennaIM.CFAppImporterUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = CFAppImporter;
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		D93D886F2F1AF89F008C99D0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = SennaIM.CFAppImporterUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_TARGET_NAME = CFAppImporter;
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -604,7 +1001,53 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		D93D88672F1AF89F008C99D0 /* Build configuration list for PBXNativeTarget "CFAppImporter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D93D88682F1AF89F008C99D0 /* Debug */,
+				D93D88692F1AF89F008C99D0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D93D886A2F1AF89F008C99D0 /* Build configuration list for PBXNativeTarget "CFAppImporterTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D93D886B2F1AF89F008C99D0 /* Debug */,
+				D93D886C2F1AF89F008C99D0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D93D886D2F1AF89F008C99D0 /* Build configuration list for PBXNativeTarget "CFAppImporterUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D93D886E2F1AF89F008C99D0 /* Debug */,
+				D93D886F2F1AF89F008C99D0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D93D898E2F1B004B008C99D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.20;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D93D89902F1B0156008C99D0 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D93D898E2F1B004B008C99D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D90C54CA2F1994AD00880D13 /* Project object */;
 }
