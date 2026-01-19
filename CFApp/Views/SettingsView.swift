@@ -7,6 +7,7 @@ struct SettingsView: View {
     @State private var exportDocument: CSVDocument? = nil
     @State private var exportName: String = "export"
     @State private var questionCount: Int? = nil
+    @State private var questionCounts: [CFALevel: Int] = [:]
     @State private var questionCountLoadFailed = false
 
     var body: some View {
@@ -29,6 +30,11 @@ struct SettingsView: View {
                 Group {
                     if let questionCount {
                         Text("Questions disponibles (base + importées) : \(questionCount)")
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(CFALevel.allCases) { level in
+                                Text("\(level.title) : \(questionCounts[level, default: 0])")
+                            }
+                        }
                     } else if questionCountLoadFailed {
                         Text("Questions disponibles : erreur de chargement")
                     } else {
@@ -99,10 +105,14 @@ struct SettingsView: View {
     private func loadQuestionCount() {
         let repo = HybridQuestionRepository()
         do {
-            questionCount = try repo.loadAllQuestions().count
+            let questions = try repo.loadAllQuestions()
+            questionCount = questions.count
+            questionCounts = Dictionary(grouping: questions, by: \.level)
+                .mapValues { $0.count }
             questionCountLoadFailed = false
         } catch {
             questionCount = nil
+            questionCounts = [:]
             questionCountLoadFailed = true
         }
     }
