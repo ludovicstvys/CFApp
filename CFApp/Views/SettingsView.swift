@@ -6,6 +6,8 @@ struct SettingsView: View {
     @State private var showExporter = false
     @State private var exportDocument: CSVDocument? = nil
     @State private var exportName: String = "export"
+    @State private var questionCount: Int? = nil
+    @State private var questionCountLoadFailed = false
 
     var body: some View {
         Form {
@@ -23,6 +25,17 @@ struct SettingsView: View {
             Section("Données") {
                 Text("Les questions du niveau 1 sont chargées depuis un JSON embarqué (offline). L'import ZIP ajoute des questions et images locales.")
                     .foregroundStyle(.secondary)
+
+                Group {
+                    if let questionCount {
+                        Text("Questions disponibles (base + importées) : \(questionCount)")
+                    } else if questionCountLoadFailed {
+                        Text("Questions disponibles : erreur de chargement")
+                    } else {
+                        Text("Questions disponibles : …")
+                    }
+                }
+                .foregroundStyle(.secondary)
 
                 NavigationLink {
                     CSVImportView()
@@ -51,6 +64,11 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Réglages")
+        .task {
+            if questionCount == nil && !questionCountLoadFailed {
+                loadQuestionCount()
+            }
+        }
         .fileExporter(
             isPresented: $showExporter,
             document: exportDocument ?? CSVDocument(text: ""),
@@ -76,6 +94,17 @@ struct SettingsView: View {
         exportDocument = CSVDocument(text: csv)
         exportName = "attempts"
         showExporter = true
+    }
+
+    private func loadQuestionCount() {
+        let repo = HybridQuestionRepository()
+        do {
+            questionCount = try repo.loadAllQuestions().count
+            questionCountLoadFailed = false
+        } catch {
+            questionCount = nil
+            questionCountLoadFailed = true
+        }
     }
 }
 

@@ -75,8 +75,10 @@ struct ZipQuestionImporter {
 
     private func findFirstCSV(in dir: URL) -> URL? {
         let fm = FileManager.default
-        let enumerator = fm.enumerator(at: dir, includingPropertiesForKeys: [.isDirectoryKey]) as? FileManager.DirectoryEnumerator
-        for case let url as URL in enumerator ?? [] {
+        guard let enumerator = fm.enumerator(at: dir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return nil
+        }
+        for case let url as URL in enumerator {
             if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
                 continue
             }
@@ -89,10 +91,12 @@ struct ZipQuestionImporter {
 
     private func buildImageIndex(in dir: URL) -> [String: URL] {
         let fm = FileManager.default
-        let enumerator = fm.enumerator(at: dir, includingPropertiesForKeys: [.isDirectoryKey]) as? FileManager.DirectoryEnumerator
+        guard let enumerator = fm.enumerator(at: dir, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return [:]
+        }
         var index: [String: URL] = [:]
 
-        for case let url as URL in enumerator ?? [] {
+        for case let url as URL in enumerator {
             if (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
                 continue
             }
