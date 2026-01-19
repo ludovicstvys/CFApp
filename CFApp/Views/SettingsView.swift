@@ -9,6 +9,8 @@ struct SettingsView: View {
     @State private var questionCount: Int? = nil
     @State private var questionCounts: [CFALevel: Int] = [:]
     @State private var questionCountLoadFailed = false
+    @State private var reportCount: Int = 0
+    @State private var confirmClearReports = false
 
     var body: some View {
         Form {
@@ -64,6 +66,25 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Signalements") {
+                Text("Signalements en attente : \(reportCount)")
+                    .foregroundStyle(.secondary)
+
+                Button {
+                    exportReports()
+                } label: {
+                    Label("Exporter les signalements (CSV)", systemImage: "square.and.arrow.up")
+                }
+                .disabled(reportCount == 0)
+
+                Button(role: .destructive) {
+                    confirmClearReports = true
+                } label: {
+                    Label("Effacer les signalements", systemImage: "trash")
+                }
+                .disabled(reportCount == 0)
+            }
+
             Section("À venir (idées)") {
                 Text("• Gamification (streak, badges)\n• Synchronisation multi-appareils\n• Génération de tests par LOS\n• Import/export CSV/JSON\n• Mode “mock exam” multi-sessions")
                     .foregroundStyle(.secondary)
@@ -74,6 +95,13 @@ struct SettingsView: View {
             if questionCount == nil && !questionCountLoadFailed {
                 loadQuestionCount()
             }
+            refreshReportCount()
+        }
+        .confirmationDialog("Supprimer les signalements ?", isPresented: $confirmClearReports, titleVisibility: .visible) {
+            Button("Tout effacer", role: .destructive) {
+                clearReports()
+            }
+            Button("Annuler", role: .cancel) {}
         }
         .fileExporter(
             isPresented: $showExporter,
@@ -102,6 +130,14 @@ struct SettingsView: View {
         showExporter = true
     }
 
+    private func exportReports() {
+        let reports = QuestionReportStore.shared.loadReports()
+        let csv = CSVExportService.exportReports(reports)
+        exportDocument = CSVDocument(text: csv)
+        exportName = "question_reports"
+        showExporter = true
+    }
+
     private func loadQuestionCount() {
         let repo = HybridQuestionRepository()
         do {
@@ -115,6 +151,15 @@ struct SettingsView: View {
             questionCounts = [:]
             questionCountLoadFailed = true
         }
+    }
+
+    private func refreshReportCount() {
+        reportCount = QuestionReportStore.shared.loadReports().count
+    }
+
+    private func clearReports() {
+        QuestionReportStore.shared.clear()
+        refreshReportCount()
     }
 }
 

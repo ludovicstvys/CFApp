@@ -26,6 +26,20 @@ struct StatsView: View {
                 .padding(.vertical, 6)
             }
 
+            Section("Objectif hebdo") {
+                Stepper("Objectif : \(vm.weeklyGoal) questions", value: $vm.weeklyGoal, in: 0...500, step: 5)
+
+                if vm.weeklyGoal > 0 {
+                    ProgressView(value: vm.weeklyProgress)
+                    Text("\(vm.weeklyQuestionsAnswered)/\(vm.weeklyGoal) cette semaine")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Objectif désactivé.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Tendances") {
                 #if canImport(Charts)
                 if #available(iOS 16.0, *) {
@@ -56,9 +70,9 @@ struct StatsView: View {
                 #endif
             }
 
-            Section("Précision par catégorie") {
+            Section("Précision par thème") {
                 if vm.categoryAccuracy.isEmpty {
-                    Text("Aucune donnée par catégorie.")
+                    Text("Aucune donnée par thème.")
                         .foregroundStyle(.secondary)
                 } else {
                     #if canImport(Charts)
@@ -82,6 +96,37 @@ struct StatsView: View {
                                 .font(.subheadline.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
+                    }
+                }
+            }
+
+            Section("Progression par sous-catégorie (LOS)") {
+                if vm.subcategoryProgress.isEmpty {
+                    Text("Aucune donnée par sous-catégorie.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.subcategoryProgress) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text(item.subcategory)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text("\(item.attempted)/\(item.total)")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            ProgressView(value: item.progress)
+                            HStack {
+                                Text("Précision")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(Int((item.accuracy * 100).rounded()))%")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
             }

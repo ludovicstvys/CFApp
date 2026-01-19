@@ -93,7 +93,8 @@ final class QuizViewModel: ObservableObject {
 
         do {
             let all = try repo.loadAllQuestions()
-            let prepared = engine.prepare(questions: all, config: config, rng: &rng)
+            let history = config.mode == .spaced ? QuestionHistoryStore.shared.loadAll() : [:]
+            let prepared = engine.prepare(questions: all, config: config, historyById: history, rng: &rng)
             self.questions = prepared
             self.state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
 
@@ -358,5 +359,7 @@ final class QuizViewModel: ObservableObject {
             perSubcategory: perSub.isEmpty ? nil : perSub
         )
         StatsStore.shared.saveAttempt(attempt)
+        let results = records.map { QuestionHistoryStore.QuestionResult(questionId: $0.questionId, isCorrect: $0.isCorrect) }
+        QuestionHistoryStore.shared.update(with: results, at: attempt.date)
     }
 }

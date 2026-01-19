@@ -63,6 +63,34 @@ struct CSVExportService {
         return buildCSV(header: header, rows: rows)
     }
 
+    static func exportReports(_ reports: [QuestionReport]) -> String {
+        let header = [
+            "id", "date", "questionId", "level", "category", "subcategory",
+            "issueType", "note", "stem", "choices", "explanation", "image", "importedAt"
+        ]
+
+        let rows = reports.map { report in
+            let choices = report.choices.joined(separator: "|")
+            return [
+                report.id,
+                iso8601String(report.createdAt),
+                report.questionId,
+                String(report.level.rawValue),
+                report.category.rawValue,
+                report.subcategory ?? "",
+                report.issueType.rawValue,
+                report.note ?? "",
+                report.stem,
+                choices,
+                report.explanation,
+                report.imageName ?? "",
+                report.importedAt.map(iso8601String) ?? ""
+            ]
+        }
+
+        return buildCSV(header: header, rows: rows)
+    }
+
     private static func padChoices(_ choices: [String], count: Int) -> [String] {
         if choices.count >= count { return Array(choices.prefix(count)) }
         return choices + Array(repeating: "", count: count - choices.count)

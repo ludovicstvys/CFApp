@@ -8,6 +8,7 @@ struct QuizView: View {
 
     let startMode: StartMode
     @StateObject private var vm = QuizViewModel()
+    @State private var reportQuestion: CFAQuestion? = nil
 
     var body: some View {
         Group {
@@ -34,6 +35,20 @@ struct QuizView: View {
         }
         .navigationTitle(vm.config.mode.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if vm.state == .running, let current = vm.current {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        reportQuestion = current.original
+                    } label: {
+                        Label("Signaler", systemImage: "exclamationmark.bubble")
+                    }
+                }
+            }
+        }
+        .sheet(item: $reportQuestion) { question in
+            ReportQuestionView(question: question)
+        }
         .onAppear {
             switch startMode {
             case .new(let config):

@@ -4,6 +4,7 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
     case revision
     case test
     case random
+    case spaced
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
         case .revision: return "Révision"
         case .test: return "Test"
         case .random: return "Aléatoire"
+        case .spaced: return "SRS"
         }
     }
 
@@ -23,6 +25,8 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
             return "Score à la fin (comme un mock)."
         case .random:
             return "Mélange toutes les catégories du niveau."
+        case .spaced:
+            return "Priorise les questions oubliées."
         }
     }
 }
