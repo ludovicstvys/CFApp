@@ -4,6 +4,20 @@ final class QuestionDiskStore {
     static let shared = QuestionDiskStore()
     private init() {}
 
+    enum StoreError: Error, LocalizedError {
+        case readFailed(Error)
+        case decodeFailed(Error)
+
+        var errorDescription: String? {
+            switch self {
+            case .readFailed(let err):
+                return "Lecture impossible: \(err.localizedDescription)"
+            case .decodeFailed(let err):
+                return "Decodage JSON impossible: \(err.localizedDescription)"
+            }
+        }
+    }
+
     private var fileURL: URL {
         ImportPaths.ensureDirectories()
         return ImportPaths.questionsFile
@@ -11,10 +25,25 @@ final class QuestionDiskStore {
 
     func load() -> [CFAQuestion] {
         do {
-            let data = try Data(contentsOf: fileURL)
-            return try JSONDecoder().decode([CFAQuestion].self, from: data)
+            return try loadOrThrow()
         } catch {
             return []
+        }
+    }
+
+    func loadOrThrow() throws -> [CFAQuestion] {
+        if !FileManager.default.fileExists(atPath: fileURL.path) {
+            return []
+        }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            do {
+                return try JSONDecoder().decode([CFAQuestion].self, from: data)
+            } catch {
+                throw StoreError.decodeFailed(error)
+            }
+        } catch {
+            throw StoreError.readFailed(error)
         }
     }
 

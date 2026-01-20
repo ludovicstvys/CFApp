@@ -100,6 +100,23 @@ struct StatsView: View {
                 }
             }
 
+            Section("Questions par catégorie") {
+                if vm.categoryCounts.allSatisfy({ $0.count == 0 }) {
+                    Text("Aucune question chargée.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.categoryCounts) { item in
+                        HStack {
+                            Text(item.category.shortName)
+                            Spacer()
+                            Text("\(item.count)")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
             Section("Progression par sous-catégorie (LOS)") {
                 if vm.subcategoryProgress.isEmpty {
                     Text("Aucune donnée par sous-catégorie.")

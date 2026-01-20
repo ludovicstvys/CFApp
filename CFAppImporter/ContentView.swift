@@ -12,14 +12,12 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @StateObject private var vm = ImporterViewModel()
     @State private var showReportExporter = false
+    @State private var showQuestionsExporter = false
+    @State private var questionsDocument: CSVDocument? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Import ZIP - Questions CFA")
-                .font(.title2.weight(.bold))
-
-            Text("Placez un ZIP (CSV + images) dans le dossier d'import, puis lancez l'import.")
-                .foregroundStyle(.secondary)
+            header
 
             GroupBox("Dossier d'import") {
                 VStack(alignment: .leading, spacing: 8) {
@@ -43,6 +41,7 @@ struct ContentView: View {
                 } label: {
                     Label("Importer depuis le dossier", systemImage: "square.and.arrow.down")
                 }
+                .buttonStyle(.borderedProminent)
 
                 if vm.status == .importing {
                     ProgressView()
@@ -86,6 +85,8 @@ struct ContentView: View {
                 }
             }
 
+            importStatus
+
             HStack(spacing: 12) {
                 Button {
                     showReportExporter = true
@@ -94,10 +95,92 @@ struct ContentView: View {
                 }
                 .disabled(!vm.hasReport)
 
+                Button {
+                    questionsDocument = CSVDocument(text: vm.buildQuestionsCSV())
+                    showQuestionsExporter = true
+                } label: {
+                    Label("Exporter les questions (CSV)", systemImage: "square.and.arrow.up")
+                }
+                .disabled(vm.importedCount == 0)
+
                 Button(role: .destructive) {
                     vm.clearImported()
                 } label: {
                     Label("Vider les imports", systemImage: "trash")
+                }
+            }
+
+            if !vm.categoryCounts.isEmpty {
+                GroupBox("Repartition par categorie") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(vm.categoryCounts, id: \.category) { entry in
+                            HStack {
+                                Text(entry.category.shortName)
+                                Spacer()
+                                Text("\(entry.count)")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            GroupBox("Questions importees") {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 12) {
+                        Picker("Categorie", selection: $vm.selectedCategory) {
+                            Text("Toutes").tag(Optional<CFACategory>.none)
+                            ForEach(vm.availableCategories, id: \.self) { cat in
+                                Text(cat.shortName).tag(Optional(cat))
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Picker("Sous-categorie", selection: $vm.selectedSubcategory) {
+                            Text("Toutes").tag(Optional<String>.none)
+                            ForEach(vm.availableSubcategories, id: \.self) { sub in
+                                Text(sub).tag(Optional(sub))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .disabled(vm.availableSubcategories.isEmpty)
+
+                        Spacer()
+
+                        Text("\(vm.filteredQuestions.count)/\(vm.importedCount)")
+                            .font(.footnote.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+
+                    List(vm.filteredQuestions) { question in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(question.stem)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            HStack(spacing: 8) {
+                                Text(question.level.title)
+                                Text("•")
+                                Text(question.category.shortName)
+                                if let sub = question.subcategory,
+                                   !sub.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                    Text("•")
+                                    Text(sub)
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                            Text("Choix: \(question.choices.count)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .listStyle(.inset)
+                    .frame(minHeight: 220, maxHeight: 320)
                 }
             }
 
@@ -111,6 +194,59 @@ struct ContentView: View {
             contentType: .plainText,
             defaultFilename: "import_report"
         ) { _ in }
+        .fileExporter(
+            isPresented: $showQuestionsExporter,
+            document: questionsDocument ?? CSVDocument(text: ""),
+            contentType: .commaSeparatedText,
+            defaultFilename: "questions_export"
+        ) { _ in
+            questionsDocument = nil
+        }
+        .onChange(of: vm.selectedCategory) { _, _ in
+            vm.onCategoryChanged()
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Import ZIP - Questions CFA")
+                    .font(.title2.weight(.bold))
+                Text("Placez un ZIP (CSV + images) dans le dossier d'import, puis lancez l'import.")
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "tray.and.arrow.down.fill")
+                .font(.title2)
+                .foregroundStyle(Color.accentColor)
+                .padding(10)
+                .background(Color.accentColor.opacity(0.15), in: Circle())
+        }
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color.accentColor.opacity(0.14),
+                    Color.green.opacity(0.10)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+    }
+
+    private var importStatus: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Questions importees : \(vm.importedCount)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            if let error = vm.importedLoadError {
+                Text("Lecture impossible: \(error)")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+        }
     }
 }
 
@@ -126,6 +262,15 @@ final class ImporterViewModel: ObservableObject {
     @Published var status: Status = .idle
     @Published var errors: [String] = []
     @Published var warnings: [String] = []
+    @Published var importedCount: Int = 0
+    @Published var importedLoadError: String? = nil
+    @Published var questions: [CFAQuestion] = []
+    @Published var selectedCategory: CFACategory? = nil
+    @Published var selectedSubcategory: String? = nil
+
+    init() {
+        refreshImportedCount()
+    }
 
     var importInboxPath: String {
         ImportPaths.importInbox.path
@@ -157,14 +302,22 @@ final class ImporterViewModel: ObservableObject {
                 let result = try importer.importQuestions(from: zipURL)
                 removeZipAfterImport(zipURL)
 
-                let existing = QuestionDiskStore.shared.load()
-                var dict = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
-                for q in result.questions { dict[q.id] = q }
-                QuestionDiskStore.shared.save(Array(dict.values))
+                let existing = try QuestionDiskStore.shared.loadOrThrow()
+                let existingDeduped = QuestionDeduplicator.dedupe(existing)
+                let merged = QuestionDeduplicator.merge(
+                    existing: existingDeduped.questions,
+                    incoming: result.questions
+                )
+                QuestionDiskStore.shared.save(merged.questions)
 
-                status = .success(count: result.questions.count)
+                let added = merged.questions.count - existingDeduped.questions.count
+                status = .success(count: max(0, added))
                 errors = result.errors
                 warnings = result.warnings
+                if merged.duplicates > 0 {
+                    warnings.append("Doublons ignores (stem + 4 choix): \(merged.duplicates)")
+                }
+                refreshImportedCount()
             } catch {
                 status = .failed(error.localizedDescription)
             }
@@ -177,6 +330,7 @@ final class ImporterViewModel: ObservableObject {
         errors = []
         warnings = []
         status = .idle
+        refreshImportedCount()
     }
 
     func fail(with message: String) {
@@ -205,6 +359,59 @@ final class ImporterViewModel: ObservableObject {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    func buildQuestionsCSV() -> String {
+        let questions = QuestionDiskStore.shared.load()
+        return CSVExportService.exportQuestions(questions)
+    }
+
+    func onCategoryChanged() {
+        if let selectedSubcategory,
+           !availableSubcategories.contains(selectedSubcategory) {
+            self.selectedSubcategory = nil
+        }
+    }
+
+    var filteredQuestions: [CFAQuestion] {
+        questions.filter { q in
+            if let selectedCategory, q.category != selectedCategory { return false }
+            if let selectedSubcategory {
+                let sub = (q.subcategory ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                if sub != selectedSubcategory { return false }
+            }
+            return true
+        }
+        .sorted { lhs, rhs in
+            if lhs.category.rawValue != rhs.category.rawValue {
+                return lhs.category.rawValue < rhs.category.rawValue
+            }
+            return lhs.stem < rhs.stem
+        }
+    }
+
+    var availableCategories: [CFACategory] {
+        Array(Set(questions.map { $0.category }))
+            .sorted { $0.rawValue < $1.rawValue }
+    }
+
+    var categoryCounts: [(category: CFACategory, count: Int)] {
+        let counts = Dictionary(grouping: questions, by: \.category)
+            .mapValues { $0.count }
+        return counts
+            .map { (category: $0.key, count: $0.value) }
+            .sorted { $0.category.rawValue < $1.category.rawValue }
+    }
+
+    var availableSubcategories: [String] {
+        let filtered = questions.filter { q in
+            if let selectedCategory, q.category != selectedCategory { return false }
+            return true
+        }
+        let subs = filtered.compactMap { q in
+            q.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return Array(Set(subs)).filter { !$0.isEmpty }.sorted()
     }
 
     private func statusText() -> String {
@@ -239,10 +446,55 @@ final class ImporterViewModel: ObservableObject {
         let fm = FileManager.default
         try? fm.removeItem(at: url)
     }
+
+    private func refreshImportedCount() {
+        do {
+            let loaded = try QuestionDiskStore.shared.loadOrThrow()
+            questions = loaded
+            importedCount = loaded.count
+            importedLoadError = nil
+        } catch {
+            importedCount = 0
+            questions = []
+            importedLoadError = error.localizedDescription
+        }
+        normalizeFilters()
+    }
+
+    private func normalizeFilters() {
+        if let selectedCategory, !availableCategories.contains(selectedCategory) {
+            self.selectedCategory = nil
+        }
+        onCategoryChanged()
+    }
 }
 
 struct TextDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.plainText] }
+
+    var text: String
+
+    init(text: String = "") {
+        self.text = text
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        if let data = configuration.file.regularFileContents,
+           let string = String(data: data, encoding: .utf8) {
+            text = string
+        } else {
+            text = ""
+        }
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = text.data(using: .utf8) ?? Data()
+        return .init(regularFileWithContents: data)
+    }
+}
+
+struct CSVDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.commaSeparatedText] }
 
     var text: String
 

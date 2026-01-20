@@ -27,6 +27,12 @@ final class StatsViewModel: ObservableObject {
         let accuracy: Double
     }
 
+    struct CategoryCount: Identifiable {
+        let id = UUID()
+        let category: CFACategory
+        let count: Int
+    }
+
     struct SubcategoryProgress: Identifiable {
         let id: String
         let subcategory: String
@@ -123,6 +129,16 @@ final class StatsViewModel: ObservableObject {
             let acc = tuple.total == 0 ? 0 : Double(tuple.correct) / Double(tuple.total)
             return CategoryPoint(category: cat, accuracy: acc)
         }.sorted { $0.category.rawValue < $1.category.rawValue }
+    }
+
+    var categoryCounts: [CategoryCount] {
+        var totals: [CFACategory: Int] = [:]
+        for q in allQuestions {
+            totals[q.category, default: 0] += 1
+        }
+        return CFACategory.allCases.map { cat in
+            CategoryCount(category: cat, count: totals[cat] ?? 0)
+        }
     }
 
     var subcategoryProgress: [SubcategoryProgress] {

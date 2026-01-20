@@ -70,9 +70,11 @@ struct CSVQuestionImporter {
             ])
         }
 
-        var dict: [String: CFAQuestion] = [:]
-        for q in questions { dict[q.id] = q }
-        questions = Array(dict.values)
+        let deduped = QuestionDeduplicator.dedupe(questions)
+        questions = deduped.questions
+        if deduped.duplicates > 0 {
+            warnings.append("Doublons ignores dans le CSV: \(deduped.duplicates)")
+        }
 
         return ImportResult(questions: questions, errors: errors, warnings: warnings)
     }
@@ -82,9 +84,8 @@ struct CSVQuestionImporter {
     private func parseQuestion(row: [String], header: [String: Int]) throws -> (question: CFAQuestion, warnings: [String]) {
         let warnings: [String] = []
 
-        let idRaw = field(row, header: header, keys: ["id", "qid", "question_id"], fallbackIndex: 0) ?? ""
-        let id = idRaw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if id.isEmpty { throw NSError(domain: "CSVImport", code: 2, userInfo: [NSLocalizedDescriptionKey: "ID vide."]) }
+        _ = field(row, header: header, keys: ["id", "qid", "question_id"], fallbackIndex: 0)
+        let id = UUID().uuidString
 
         let levelRaw = field(row, header: header, keys: ["level"], fallbackIndex: 1) ?? ""
         guard let levelInt = Int(levelRaw.trimmingCharacters(in: .whitespacesAndNewlines)),
