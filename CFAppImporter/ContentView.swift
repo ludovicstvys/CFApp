@@ -66,7 +66,10 @@ struct ContentView: View {
                     Text("Nom conseille: formule*.csv / formula*.csv")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Text("Colonnes: category, topic, title, formula, notes, image")
+                    Text("Colonnes: category, topic, title, formula, notes, image, question_ids")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("question_ids: ids des questions exportées (séparateur | ou ;).")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
 

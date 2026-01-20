@@ -8,6 +8,7 @@ struct CFAFormula: Identifiable, Codable, Hashable {
     let formula: String
     let notes: String?
     let imageName: String?
+    let questionIds: [String]?
     let importedAt: Date?
 
     init(
@@ -18,6 +19,7 @@ struct CFAFormula: Identifiable, Codable, Hashable {
         formula: String,
         notes: String? = nil,
         imageName: String? = nil,
+        questionIds: [String]? = nil,
         importedAt: Date? = nil
     ) {
         self.id = id
@@ -27,6 +29,7 @@ struct CFAFormula: Identifiable, Codable, Hashable {
         self.formula = formula
         self.notes = notes
         self.imageName = imageName
+        self.questionIds = questionIds
         self.importedAt = importedAt
     }
 }

@@ -20,6 +20,8 @@ struct FormulasView: View {
                     }
                 }
                 .disabled(vm.availableTopics.isEmpty)
+
+                Toggle("Favoris uniquement", isOn: $vm.showFavoritesOnly)
             }
 
             if vm.filteredFormulas.isEmpty {
@@ -32,8 +34,18 @@ struct FormulasView: View {
                     Section(section.title) {
                         ForEach(section.items) { formula in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(formula.title)
-                                    .font(.headline)
+                                HStack(spacing: 10) {
+                                    Text(formula.title)
+                                        .font(.headline)
+                                    Spacer()
+                                    Button {
+                                        vm.toggleFavorite(formula)
+                                    } label: {
+                                        Image(systemName: vm.isFavorite(formula) ? "star.fill" : "star")
+                                            .foregroundStyle(vm.isFavorite(formula) ? .yellow : .secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
 
                                 Text(formula.formula)
                                     .font(.system(.body, design: .monospaced))
@@ -59,6 +71,26 @@ struct FormulasView: View {
                                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 #endif
                                 }
+
+                                let linked = vm.linkedQuestions(for: formula)
+                                if !linked.isEmpty {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Questions liées")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                        ForEach(linked.prefix(3)) { question in
+                                            Text("• \(question.stem)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                                .fixedSize(horizontal: false, vertical: true)
+                                        }
+                                        if linked.count > 3 {
+                                            Text("… +\(linked.count - 3)")
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
                             }
                             .padding(.vertical, 6)
                         }
@@ -69,6 +101,12 @@ struct FormulasView: View {
         .navigationTitle("Formules")
         .onChange(of: vm.selectedCategory) { _ in
             vm.onCategoryChanged()
+        }
+        .onChange(of: vm.showFavoritesOnly) { _ in
+            vm.refresh()
+        }
+        .onAppear {
+            vm.refresh()
         }
     }
 

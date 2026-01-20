@@ -85,7 +85,6 @@ struct CSVQuestionImporter {
         let warnings: [String] = []
 
         _ = field(row, header: header, keys: ["id", "qid", "question_id"], fallbackIndex: 0)
-        let id = UUID().uuidString
 
         let levelRaw = field(row, header: header, keys: ["level"], fallbackIndex: 1) ?? ""
         guard let levelInt = Int(levelRaw.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -110,6 +109,8 @@ struct CSVQuestionImporter {
         if choices.count < 2 {
             throw NSError(domain: "CSVImport", code: 6, userInfo: [NSLocalizedDescriptionKey: "Choix insuffisants (au moins 2)."])
         }
+
+        let id = QuestionDeduplicator.stableId(stem: stem, choices: choices)
 
         let answerRaw = field(row, header: header, keys: ["answerindex", "answer", "correct"], fallbackIndex: 9) ?? ""
         let correctIndices = parseAnswerIndices(answerRaw, choicesCount: choices.count)

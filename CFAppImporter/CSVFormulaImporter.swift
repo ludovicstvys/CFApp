@@ -107,6 +107,14 @@ struct CSVFormulaImporter {
         let imageName = field(row, header: header, keys: ["image", "imagename", "image_name"], fallbackIndex: 5)
             ?.trimmingCharacters(in: .whitespacesAndNewlines)
 
+        let questionIdsRaw = field(
+            row,
+            header: header,
+            keys: ["question_ids", "questionids", "question_id", "questions"],
+            fallbackIndex: 6
+        )
+        let questionIds = parseList(questionIdsRaw)
+
         let formula = CFAFormula(
             id: UUID().uuidString,
             category: category,
@@ -115,6 +123,7 @@ struct CSVFormulaImporter {
             formula: formulaText,
             notes: notes?.isEmpty == true ? nil : notes,
             imageName: imageName?.isEmpty == true ? nil : imageName,
+            questionIds: questionIds.isEmpty ? nil : questionIds,
             importedAt: Date()
         )
 
@@ -152,5 +161,16 @@ struct CSVFormulaImporter {
             return row[idx]
         }
         return nil
+    }
+
+    private func parseList(_ raw: String?) -> [String] {
+        guard let raw else { return [] }
+        let cleaned = raw
+            .replacingOccurrences(of: ";", with: "|")
+            .replacingOccurrences(of: "/", with: "|")
+        return cleaned
+            .split(separator: "|")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 }

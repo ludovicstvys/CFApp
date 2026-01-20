@@ -92,6 +92,7 @@ struct QuizView: View {
     private var running: some View {
         VStack(alignment: .leading, spacing: 14) {
             ProgressHeaderView(
+                label: "Question",
                 index: vm.currentIndex,
                 total: vm.total,
                 score: vm.score,

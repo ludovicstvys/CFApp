@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProgressHeaderView: View {
+    let label: String
     let index: Int
     let total: Int
     let score: Int
@@ -14,7 +15,7 @@ struct ProgressHeaderView: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Question \(min(index + 1, total))/\(total)")
+                Text("\(label) \(min(index + 1, total))/\(total)")
                     .font(.headline)
 
                 Spacer()

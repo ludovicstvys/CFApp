@@ -5,7 +5,11 @@ import Combine
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published var level: CFALevel = .level1
-    @Published var mode: QuizMode = .revision
+    @Published var mode: QuizMode = .revision {
+        didSet {
+            refreshFiltersForMode()
+        }
+    }
     @Published var selectedCategories: Set<CFACategory> = []
 
     /// Sous-catégories sélectionnées (si vide => pas de filtre)
@@ -22,6 +26,9 @@ final class HomeViewModel: ObservableObject {
 
     private let repo: QuestionRepository
     private var allQuestions: [CFAQuestion] = []
+    private var allFormulas: [CFAFormula] = []
+    private var questionCategories: [CFACategory] = []
+    private var formulaCategories: [CFACategory] = []
 
     init(repo: QuestionRepository = HybridQuestionRepository()) {
         self.repo = repo
@@ -97,31 +104,56 @@ final class HomeViewModel: ObservableObject {
         } catch {
             allQuestions = []
         }
-        availableCategories = Array(Set(allQuestions.map { $0.category }))
+        questionCategories = Array(Set(allQuestions.map { $0.category }))
             .sorted { $0.rawValue < $1.rawValue }
+
+        do {
+            allFormulas = try LocalFormulaStore().loadAllFormulas()
+        } catch {
+            allFormulas = []
+        }
+        formulaCategories = Array(Set(allFormulas.map { $0.category }))
+            .sorted { $0.rawValue < $1.rawValue }
+
+        refreshFiltersForMode()
+    }
+
+    private func refreshAvailableSubcategories() {
+        let cats = selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories
+
+        if mode == .formulas {
+            let topics = allFormulas
+                .filter { cats.contains($0.category) }
+                .compactMap { $0.topic?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            availableSubcategories = Array(Set(topics)).sorted()
+        } else {
+            let subs = allQuestions
+                .filter { $0.level == level && cats.contains($0.category) }
+                .compactMap { $0.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+            availableSubcategories = Array(Set(subs)).sorted()
+        }
+
+        // Si on filtre, supprimer les sous-catégories qui ne sont plus disponibles
+        if !selectedSubcategories.isEmpty {
+            selectedSubcategories = selectedSubcategories.intersection(Set(availableSubcategories))
+        }
+    }
+
+    private func refreshFiltersForMode() {
+        if mode == .formulas {
+            availableCategories = formulaCategories
+        } else {
+            availableCategories = questionCategories
+        }
+
         if selectedCategories.isEmpty {
             selectedCategories = Set(availableCategories)
         } else {
             selectedCategories = selectedCategories.intersection(Set(availableCategories))
         }
+
         refreshAvailableSubcategories()
-    }
-
-    private func refreshAvailableSubcategories() {
-        // Sous-catégories disponibles pour level + catégories sélectionnées
-        let cats = selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories
-
-        let subs = allQuestions
-            .filter { $0.level == level && cats.contains($0.category) }
-            .compactMap { $0.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-
-        let unique = Array(Set(subs)).sorted()
-        availableSubcategories = unique
-
-        // Si on filtre, supprimer les sous-catégories qui ne sont plus disponibles
-        if !selectedSubcategories.isEmpty {
-            selectedSubcategories = selectedSubcategories.intersection(Set(unique))
-        }
     }
 }

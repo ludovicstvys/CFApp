@@ -4,6 +4,7 @@ struct HomeView: View {
     @StateObject private var vm = HomeViewModel()
     @State private var startQuiz = false
     @State private var resumeQuiz = false
+    @State private var startFormulaQuiz = false
 
     var body: some View {
         ScrollView {
@@ -59,6 +60,13 @@ struct HomeView: View {
                     .onChange(of: vm.level) { _ in
                         vm.onLevelChanged()
                     }
+                    .disabled(vm.mode == .formulas)
+
+                    if vm.mode == .formulas {
+                        Text("Le niveau ne s'applique pas au mode Formules.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 GroupBox("Catégories") {
@@ -78,7 +86,7 @@ struct HomeView: View {
                     }
                 }
 
-                GroupBox("Sous-catégories (optionnel)") {
+                GroupBox(vm.mode == .formulas ? "Topics (optionnel)" : "Sous-catégories (optionnel)") {
                     SubcategoryPickerView(
                         available: vm.availableSubcategories,
                         selected: $vm.selectedSubcategories,
@@ -92,6 +100,10 @@ struct HomeView: View {
                         Text("En mode Aléatoire, les sous-catégories sont ignorées.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    } else if vm.mode == .formulas {
+                        Text("Les topics filtrent les formules du quiz.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -99,15 +111,21 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Stepper("Nombre de questions : \(vm.numberOfQuestions)", value: $vm.numberOfQuestions, in: 5...60, step: 5)
 
-                        Toggle("Mélanger les réponses", isOn: $vm.shuffleAnswers)
+                        if vm.mode != .formulas {
+                            Toggle("Mélanger les réponses", isOn: $vm.shuffleAnswers)
 
-                        if vm.mode == .test {
-                            Stepper("Limite de temps (minutes) : \(vm.timeLimitMinutes)", value: $vm.timeLimitMinutes, in: 0...180, step: 5)
-                            Text("0 = pas de limite de temps")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            if vm.mode == .test {
+                                Stepper("Limite de temps (minutes) : \(vm.timeLimitMinutes)", value: $vm.timeLimitMinutes, in: 0...180, step: 5)
+                                Text("0 = pas de limite de temps")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("En mode Révision, le feedback est immédiat. En mode Test, le feedback est à la fin.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         } else {
-                            Text("En mode Révision, le feedback est immédiat. En mode Test, le feedback est à la fin.")
+                            Text("Quiz de formules avec auto-vérif.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -115,7 +133,11 @@ struct HomeView: View {
                 }
 
                 PrimaryButton(title: "Démarrer", systemImage: "play.fill") {
-                    startQuiz = true
+                    if vm.mode == .formulas {
+                        startFormulaQuiz = true
+                    } else {
+                        startQuiz = true
+                    }
                 }
                 .padding(.top, 6)
             }
@@ -125,6 +147,9 @@ struct HomeView: View {
         .navigationBarTitleDisplayMode(.large)
         .navigationDestination(isPresented: $startQuiz) {
             QuizView(startMode: .new(config: vm.config))
+        }
+        .navigationDestination(isPresented: $startFormulaQuiz) {
+            FormulaQuizView(config: vm.config)
         }
         .navigationDestination(isPresented: $resumeQuiz) {
             QuizView(startMode: .resume(fallbackConfig: vm.config))

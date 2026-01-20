@@ -5,6 +5,7 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
     case test
     case random
     case spaced
+    case formulas
 
     var id: String { rawValue }
 
@@ -14,6 +15,7 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
         case .test: return "Test"
         case .random: return "Aléatoire"
         case .spaced: return "SRS"
+        case .formulas: return "Formules"
         }
     }
 
@@ -27,6 +29,8 @@ enum QuizMode: String, Codable, CaseIterable, Identifiable {
             return "Mélange toutes les catégories du niveau."
         case .spaced:
             return "Priorise les questions oubliées."
+        case .formulas:
+            return "Quiz de formules avec auto-vérif."
         }
     }
 }
