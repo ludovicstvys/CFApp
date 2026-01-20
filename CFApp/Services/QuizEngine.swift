@@ -46,6 +46,8 @@ struct QuizEngine {
             return ok
         }
 
+        let allowAllCategories = config.categories.isEmpty
+
         let filtered = validQuestions.filter { q in
             guard q.level == config.level else { return false }
 
@@ -53,7 +55,9 @@ struct QuizEngine {
                 return true
             }
 
-            guard config.categories.contains(q.category) else { return false }
+            if !allowAllCategories, !config.categories.contains(q.category) {
+                return false
+            }
 
             if !config.subcategories.isEmpty {
                 let sub = (q.subcategory ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

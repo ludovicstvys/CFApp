@@ -14,7 +14,7 @@ import Foundation
 ///    id,level,category,subcategory,stem,choiceA,choiceB,choiceC,choiceD,answerIndex,explanation,difficulty
 ///
 /// Notes :
-/// - category : doit correspondre à CFACategory.rawValue (ex: "Ethics") ou à un alias (ex: "Éthique", "FRA"...)
+/// - category : valeur libre (ex: "Ethics", "Éthique", "FRA", ou toute nouvelle catégorie)
 /// - subcategory : texte libre (ex: "Time Value of Money")
 /// - answerIndex :
 ///    - single : 0..3 ou A/B/C/D
@@ -124,7 +124,7 @@ struct CSVQuestionImporter {
         let categoryStr = (field(row, header: header, keys: ["category", "topic", "section"], fallbackIndex: 2) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let category = parseCategory(categoryStr) else {
-            throw NSError(domain: "CSVImport", code: 3, userInfo: [NSLocalizedDescriptionKey: "Champ 'category' invalide."])
+            throw NSError(domain: "CSVImport", code: 3, userInfo: [NSLocalizedDescriptionKey: "Champ 'category' vide."])
         }
 
         // Indices (uniquement utiles si pas d'en-tête)
@@ -231,29 +231,7 @@ struct CSVQuestionImporter {
     }
 
     private func parseCategory(_ raw: String) -> CFACategory? {
-        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        if s.isEmpty { return nil }
-
-        if let exact = CFACategory.allCases.first(where: { $0.rawValue.lowercased() == s.lowercased() }) {
-            return exact
-        }
-        if let byShort = CFACategory.allCases.first(where: { $0.shortName.lowercased() == s.lowercased() }) {
-            return byShort
-        }
-
-        let aliases: [String: CFACategory] = [
-            "ethique": .ethics, "éthique": .ethics, "ethics": .ethics,
-            "quant": .quantitativeMethods, "quantitative": .quantitativeMethods, "quantitative methods": .quantitativeMethods,
-            "eco": .economics, "éco": .economics, "economics": .economics,
-            "fra": .financialReporting, "financial reporting": .financialReporting, "financial reporting & analysis": .financialReporting,
-            "corp fin": .corporateFinance, "corporate finance": .corporateFinance,
-            "equity": .equity, "equity investments": .equity,
-            "fixed income": .fixedIncome, "fi": .fixedIncome,
-            "derives": .derivatives, "dérivés": .derivatives, "derivatives": .derivatives,
-            "alt inv": .alternativeInvestments, "alternative investments": .alternativeInvestments,
-            "portfolio": .portfolioManagement, "portfolio management": .portfolioManagement, "portfolio management & wealth planning": .portfolioManagement
-        ]
-        return aliases[s.lowercased()]
+        CFACategory.parse(raw)
     }
 
     private func parseCSV(string: String, delimiter: Character) -> [[String]] {

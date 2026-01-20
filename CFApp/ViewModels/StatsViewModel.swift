@@ -4,6 +4,7 @@ import Combine
 @MainActor
 final class StatsViewModel: ObservableObject {
     @Published private(set) var attempts: [QuizAttempt] = []
+    @Published private(set) var availableCategories: [CFACategory] = []
     @Published var weeklyGoal: Int = WeeklyGoalStore.shared.weeklyQuestionGoal {
         didSet {
             let clamped = max(0, weeklyGoal)
@@ -14,6 +15,7 @@ final class StatsViewModel: ObservableObject {
             WeeklyGoalStore.shared.weeklyQuestionGoal = clamped
         }
     }
+    @Published private var weeklyCategoryGoals: [String: Int] = CategoryGoalStore.shared.loadGoals()
 
     struct AttemptPoint: Identifiable {
         let id = UUID()
@@ -33,6 +35,32 @@ final class StatsViewModel: ObservableObject {
         let count: Int
     }
 
+    struct CategoryCoverage: Identifiable {
+        let id = UUID()
+        let category: CFACategory
+        let seen: Int
+        let total: Int
+        let progress: Double
+    }
+
+    struct SubcategoryCoverage: Identifiable {
+        let id: String
+        let category: CFACategory
+        let subcategory: String
+        let seen: Int
+        let total: Int
+        let progress: Double
+    }
+
+    struct WeeklyGoalAlert: Identifiable {
+        let id: String
+        let category: CFACategory
+        let answered: Int
+        let goal: Int
+
+        var remaining: Int { max(0, goal - answered) }
+    }
+
     struct SubcategoryProgress: Identifiable {
         let id: String
         let subcategory: String
@@ -44,6 +72,7 @@ final class StatsViewModel: ObservableObject {
 
     private let repo: QuestionRepository
     private var allQuestions: [CFAQuestion] = []
+    private var historyById: [String: QuestionHistory] = [:]
 
     init(repo: QuestionRepository = HybridQuestionRepository()) {
         self.repo = repo
@@ -52,6 +81,7 @@ final class StatsViewModel: ObservableObject {
 
     func refresh() {
         attempts = StatsStore.shared.loadAttempts()
+        historyById = QuestionHistoryStore.shared.loadAll()
         loadCatalog()
     }
 
@@ -95,6 +125,33 @@ final class StatsViewModel: ObservableObject {
         return min(1, Double(weeklyQuestionsAnswered) / Double(weeklyGoal))
     }
 
+    func weeklyGoal(for category: CFACategory) -> Int {
+        weeklyCategoryGoals[category.rawValue] ?? 0
+    }
+
+    func setWeeklyGoal(_ goal: Int, for category: CFACategory) {
+        let clamped = max(0, goal)
+        weeklyCategoryGoals[category.rawValue] = clamped
+        CategoryGoalStore.shared.saveGoals(weeklyCategoryGoals)
+    }
+
+    var weeklyGoalAlerts: [WeeklyGoalAlert] {
+        let byCategory = weeklyQuestionsByCategory()
+        let alerts = availableCategories.compactMap { cat -> WeeklyGoalAlert? in
+            let goal = weeklyGoal(for: cat)
+            guard goal > 0 else { return nil }
+            let answered = byCategory[cat] ?? 0
+            guard answered < goal else { return nil }
+            return WeeklyGoalAlert(id: cat.rawValue, category: cat, answered: answered, goal: goal)
+        }
+        return alerts.sorted { lhs, rhs in
+            if lhs.remaining == rhs.remaining {
+                return lhs.category.rawValue < rhs.category.rawValue
+            }
+            return lhs.remaining > rhs.remaining
+        }
+    }
+
     var streakDays: Int {
         let calendar = Calendar.current
         let days = Set(attempts.map { calendar.startOfDay(for: $0.date) })
@@ -136,8 +193,66 @@ final class StatsViewModel: ObservableObject {
         for q in allQuestions {
             totals[q.category, default: 0] += 1
         }
-        return CFACategory.allCases.map { cat in
+        return availableCategories.map { cat in
             CategoryCount(category: cat, count: totals[cat] ?? 0)
+        }
+    }
+
+    var categoryCoverage: [CategoryCoverage] {
+        var totals: [CFACategory: (seen: Int, total: Int)] = [:]
+        let seenIds = Set(historyById.keys)
+        for q in allQuestions {
+            var entry = totals[q.category, default: (0, 0)]
+            entry.total += 1
+            if seenIds.contains(q.id) {
+                entry.seen += 1
+            }
+            totals[q.category] = entry
+        }
+        return availableCategories.map { cat in
+            let entry = totals[cat] ?? (0, 0)
+            let progress = entry.total == 0 ? 0 : Double(entry.seen) / Double(entry.total)
+            return CategoryCoverage(category: cat, seen: entry.seen, total: entry.total, progress: progress)
+        }
+    }
+
+    var subcategoryCoverage: [SubcategoryCoverage] {
+        struct Key: Hashable {
+            let category: CFACategory
+            let subcategory: String
+        }
+        var totals: [Key: (seen: Int, total: Int)] = [:]
+        let seenIds = Set(historyById.keys)
+
+        for q in allQuestions {
+            let sub = (q.subcategory ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !sub.isEmpty else { continue }
+            let key = Key(category: q.category, subcategory: sub)
+            var entry = totals[key, default: (0, 0)]
+            entry.total += 1
+            if seenIds.contains(q.id) {
+                entry.seen += 1
+            }
+            totals[key] = entry
+        }
+
+        let items = totals.map { key, entry -> SubcategoryCoverage in
+            let progress = entry.total == 0 ? 0 : Double(entry.seen) / Double(entry.total)
+            return SubcategoryCoverage(
+                id: "\(key.category.rawValue)::\(key.subcategory)",
+                category: key.category,
+                subcategory: key.subcategory,
+                seen: entry.seen,
+                total: entry.total,
+                progress: progress
+            )
+        }
+
+        return items.sorted {
+            if $0.category.rawValue != $1.category.rawValue {
+                return $0.category.rawValue < $1.category.rawValue
+            }
+            return $0.subcategory.localizedCaseInsensitiveCompare($1.subcategory) == .orderedAscending
         }
     }
 
@@ -173,12 +288,24 @@ final class StatsViewModel: ObservableObject {
         }
     }
 
+    func weeklyAnswered(for category: CFACategory) -> Int {
+        weeklyQuestionsByCategory()[category] ?? 0
+    }
+
+    func weeklyProgress(for category: CFACategory) -> Double {
+        let goal = weeklyGoal(for: category)
+        guard goal > 0 else { return 0 }
+        return min(1, Double(weeklyAnswered(for: category)) / Double(goal))
+    }
+
     private func loadCatalog() {
         do {
             allQuestions = try repo.loadAllQuestions()
         } catch {
             allQuestions = []
         }
+        availableCategories = Array(Set(allQuestions.map { $0.category }))
+            .sorted { $0.rawValue < $1.rawValue }
     }
 
     private func totalQuestionsBySubcategory() -> [String: Int] {
@@ -200,6 +327,18 @@ final class StatsViewModel: ObservableObject {
                 guard !sub.isEmpty else { continue }
                 totals[sub, default: (0, 0)].correct += result.correct
                 totals[sub, default: (0, 0)].total += result.total
+            }
+        }
+        return totals
+    }
+
+    private func weeklyQuestionsByCategory() -> [CFACategory: Int] {
+        let calendar = Calendar.current
+        guard let interval = calendar.dateInterval(of: .weekOfYear, for: Date()) else { return [:] }
+        var totals: [CFACategory: Int] = [:]
+        for attempt in attempts where attempt.date >= interval.start && attempt.date < interval.end {
+            for (cat, result) in attempt.perCategory {
+                totals[cat, default: 0] += result.total
             }
         }
         return totals

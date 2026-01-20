@@ -8,6 +8,9 @@
 import SwiftUI
 import Combine
 import UniformTypeIdentifiers
+#if canImport(AppKit)
+import AppKit
+#endif
 
 struct ContentView: View {
     @StateObject private var vm = ImporterViewModel()
@@ -16,177 +19,189 @@ struct ContentView: View {
     @State private var questionsDocument: CSVDocument? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            header
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                header
 
-            GroupBox("Dossier d'import") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(vm.importInboxPath)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-
-                    Text("Deposez un CSV dans ce dossier. L'app importe le CSV le plus recent.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text("Astuce: supprimez les anciens CSV ou renommez le nouveau fichier si besoin.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            HStack(spacing: 12) {
-                Button {
-                    vm.importFromInbox()
-                } label: {
-                    Label("Importer le CSV du dossier", systemImage: "square.and.arrow.down")
-                }
-                .buttonStyle(.borderedProminent)
-
-                if vm.status == .importing {
-                    ProgressView()
-                }
-            }
-
-            if case .success(let count) = vm.status {
-                Text("Import termine : \(count) questions importees.")
-                    .font(.headline)
-                    .foregroundStyle(.green)
-            }
-
-            if case .failed(let message) = vm.status {
-                Text("Echec : \(message)")
-                    .foregroundStyle(.red)
-            }
-
-            if !vm.errors.isEmpty {
-                GroupBox("Erreurs (max 30)") {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(vm.errors.prefix(30), id: \.self) { err in
-                                Text(err).font(.footnote)
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 160)
-                }
-            }
-
-            if !vm.warnings.isEmpty {
-                GroupBox("Avertissements (max 30)") {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(vm.warnings.prefix(30), id: \.self) { warn in
-                                Text(warn).font(.footnote)
-                            }
-                        }
-                    }
-                    .frame(maxHeight: 160)
-                }
-            }
-
-            importStatus
-
-            HStack(spacing: 12) {
-                Button {
-                    showReportExporter = true
-                } label: {
-                    Label("Exporter le rapport", systemImage: "doc.plaintext")
-                }
-                .disabled(!vm.hasReport)
-
-                Button {
-                    questionsDocument = CSVDocument(text: vm.buildQuestionsCSV())
-                    showQuestionsExporter = true
-                } label: {
-                    Label("Exporter les questions (CSV)", systemImage: "square.and.arrow.up")
-                }
-                .disabled(vm.importedCount == 0)
-
-                Button(role: .destructive) {
-                    vm.clearImported()
-                } label: {
-                    Label("Vider les imports", systemImage: "trash")
-                }
-            }
-
-            if !vm.categoryCounts.isEmpty {
-                GroupBox("Repartition par categorie") {
+                GroupBox("Dossier d'import") {
                     VStack(alignment: .leading, spacing: 8) {
-                        ForEach(vm.categoryCounts, id: \.category) { entry in
-                            HStack {
-                                Text(entry.category.shortName)
-                                Spacer()
-                                Text("\(entry.count)")
-                                    .font(.subheadline.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
+                        Text(vm.importInboxPath)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+
+                        Text("Deposez un CSV dans ce dossier. L'app importe le CSV le plus recent.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Text("Astuce: supprimez les anciens CSV ou renommez le nouveau fichier si besoin.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+
+                        Button {
+#if canImport(AppKit)
+                            NSWorkspace.shared.open(vm.importInboxURL)
+#endif
+                        } label: {
+                            Label("Ouvrir le dossier", systemImage: "folder")
                         }
+                        .buttonStyle(.bordered)
                     }
                 }
-            }
 
-            GroupBox("Questions importees") {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 12) {
-                        Picker("Categorie", selection: $vm.selectedCategory) {
-                            Text("Toutes").tag(Optional<CFACategory>.none)
-                            ForEach(vm.availableCategories, id: \.self) { cat in
-                                Text(cat.shortName).tag(Optional(cat))
-                            }
-                        }
-                        .pickerStyle(.menu)
-
-                        Picker("Sous-categorie", selection: $vm.selectedSubcategory) {
-                            Text("Toutes").tag(Optional<String>.none)
-                            ForEach(vm.availableSubcategories, id: \.self) { sub in
-                                Text(sub).tag(Optional(sub))
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .disabled(vm.availableSubcategories.isEmpty)
-
-                        Spacer()
-
-                        Text("\(vm.filteredQuestions.count)/\(vm.importedCount)")
-                            .font(.footnote.monospacedDigit())
-                            .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    Button {
+                        vm.importFromInbox()
+                    } label: {
+                        Label("Importer le CSV du dossier", systemImage: "square.and.arrow.down")
                     }
+                    .buttonStyle(.borderedProminent)
 
-                    List(vm.filteredQuestions) { question in
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(question.stem)
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(3)
-                                .fixedSize(horizontal: false, vertical: true)
+                    if vm.status == .importing {
+                        ProgressView()
+                    }
+                }
 
-                            HStack(spacing: 8) {
-                                Text(question.level.title)
-                                Text("•")
-                                Text(question.category.shortName)
-                                if let sub = question.subcategory,
-                                   !sub.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                    Text("•")
-                                    Text(sub)
+                if case .success(let count) = vm.status {
+                    Text("Import termine : \(count) questions importees.")
+                        .font(.headline)
+                        .foregroundStyle(.green)
+                }
+
+                if case .failed(let message) = vm.status {
+                    Text("Echec : \(message)")
+                        .foregroundStyle(.red)
+                }
+
+                if !vm.errors.isEmpty {
+                    GroupBox("Erreurs (max 30)") {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(vm.errors.prefix(30), id: \.self) { err in
+                                    Text(err).font(.footnote)
                                 }
                             }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        }
+                        .frame(maxHeight: 160)
+                    }
+                }
 
-                            Text("Choix: \(question.choices.count)")
-                                .font(.caption2)
+                if !vm.warnings.isEmpty {
+                    GroupBox("Avertissements (max 30)") {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(vm.warnings.prefix(30), id: \.self) { warn in
+                                    Text(warn).font(.footnote)
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 160)
+                    }
+                }
+
+                importStatus
+
+                HStack(spacing: 12) {
+                    Button {
+                        showReportExporter = true
+                    } label: {
+                        Label("Exporter le rapport", systemImage: "doc.plaintext")
+                    }
+                    .disabled(!vm.hasReport)
+
+                    Button {
+                        questionsDocument = CSVDocument(text: vm.buildQuestionsCSV())
+                        showQuestionsExporter = true
+                    } label: {
+                        Label("Exporter les questions (CSV)", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(vm.importedCount == 0)
+
+                    Button(role: .destructive) {
+                        vm.clearImported()
+                    } label: {
+                        Label("Vider les imports", systemImage: "trash")
+                    }
+                }
+
+                if !vm.categoryCounts.isEmpty {
+                    GroupBox("Repartition par categorie") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(vm.categoryCounts, id: \.category) { entry in
+                                HStack {
+                                    Text(entry.category.shortName)
+                                    Spacer()
+                                    Text("\(entry.count)")
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                GroupBox("Questions importees") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 12) {
+                            Picker("Categorie", selection: $vm.selectedCategory) {
+                                Text("Toutes").tag(Optional<CFACategory>.none)
+                                ForEach(vm.availableCategories, id: \.self) { cat in
+                                    Text(cat.shortName).tag(Optional(cat))
+                                }
+                            }
+                            .pickerStyle(.menu)
+
+                            Picker("Sous-categorie", selection: $vm.selectedSubcategory) {
+                                Text("Toutes").tag(Optional<String>.none)
+                                ForEach(vm.availableSubcategories, id: \.self) { sub in
+                                    Text(sub).tag(Optional(sub))
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .disabled(vm.availableSubcategories.isEmpty)
+
+                            Spacer()
+
+                            Text("\(vm.filteredQuestions.count)/\(vm.importedCount)")
+                                .font(.footnote.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.vertical, 4)
-                    }
-                    .listStyle(.inset)
-                    .frame(minHeight: 220, maxHeight: 320)
-                }
-            }
 
-            Spacer()
+                        List(vm.filteredQuestions) { question in
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(question.stem)
+                                    .font(.subheadline.weight(.semibold))
+                                    .lineLimit(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                HStack(spacing: 8) {
+                                    Text(question.level.title)
+                                    Text("•")
+                                    Text(question.category.shortName)
+                                    if let sub = question.subcategory,
+                                       !sub.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                        Text("•")
+                                        Text(sub)
+                                    }
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                                Text("Choix: \(question.choices.count)")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .listStyle(.inset)
+                        .frame(minHeight: 220, maxHeight: 320)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(20)
         .frame(minWidth: 620, minHeight: 520)
         .fileExporter(
             isPresented: $showReportExporter,
@@ -274,6 +289,10 @@ final class ImporterViewModel: ObservableObject {
 
     var importInboxPath: String {
         ImportPaths.importInbox.path
+    }
+
+    var importInboxURL: URL {
+        ImportPaths.importInbox
     }
 
     var hasReport: Bool {

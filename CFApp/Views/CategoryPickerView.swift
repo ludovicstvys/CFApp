@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CategoryPickerView: View {
+    let categories: [CFACategory]
     @Binding var selected: Set<CFACategory>
     let onToggle: (CFACategory) -> Void
     let onSelectAll: () -> Void
@@ -14,7 +15,7 @@ struct CategoryPickerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(CFACategory.allCases, id: \.self) { cat in
+                ForEach(categories, id: \.self) { cat in
                     let isSelected = selected.contains(cat)
 
                     Button {

@@ -14,7 +14,7 @@ struct QuizConfig: Hashable, Codable {
         QuizConfig(
             level: .level1,
             mode: .revision,
-            categories: Set(CFACategory.allCases),
+            categories: [],
             subcategories: [],
             numberOfQuestions: 20,
             shuffleAnswers: false,

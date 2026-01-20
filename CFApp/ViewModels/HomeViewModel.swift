@@ -6,7 +6,7 @@ import Combine
 final class HomeViewModel: ObservableObject {
     @Published var level: CFALevel = .level1
     @Published var mode: QuizMode = .revision
-    @Published var selectedCategories: Set<CFACategory> = Set(CFACategory.allCases)
+    @Published var selectedCategories: Set<CFACategory> = []
 
     /// Sous-catégories sélectionnées (si vide => pas de filtre)
     @Published var selectedSubcategories: Set<String> = []
@@ -16,6 +16,7 @@ final class HomeViewModel: ObservableObject {
     @Published var timeLimitMinutes: Int = 0 // 0 = pas de limite
 
     // Catalog (pour dériver les sous-catégories disponibles)
+    @Published private(set) var availableCategories: [CFACategory] = []
     @Published private(set) var availableSubcategories: [String] = []
     @Published private(set) var savedSessionSummary: QuizSessionSummary? = nil
 
@@ -32,7 +33,7 @@ final class HomeViewModel: ObservableObject {
         QuizConfig(
             level: level,
             mode: mode,
-            categories: selectedCategories.isEmpty ? Set(CFACategory.allCases) : selectedCategories,
+            categories: selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories,
             subcategories: selectedSubcategories,
             numberOfQuestions: max(1, numberOfQuestions),
             shuffleAnswers: shuffleAnswers,
@@ -50,7 +51,7 @@ final class HomeViewModel: ObservableObject {
     }
 
     func selectAllCategories() {
-        selectedCategories = Set(CFACategory.allCases)
+        selectedCategories = Set(availableCategories)
         refreshAvailableSubcategories()
     }
 
@@ -96,12 +97,19 @@ final class HomeViewModel: ObservableObject {
         } catch {
             allQuestions = []
         }
+        availableCategories = Array(Set(allQuestions.map { $0.category }))
+            .sorted { $0.rawValue < $1.rawValue }
+        if selectedCategories.isEmpty {
+            selectedCategories = Set(availableCategories)
+        } else {
+            selectedCategories = selectedCategories.intersection(Set(availableCategories))
+        }
         refreshAvailableSubcategories()
     }
 
     private func refreshAvailableSubcategories() {
         // Sous-catégories disponibles pour level + catégories sélectionnées
-        let cats = selectedCategories.isEmpty ? Set(CFACategory.allCases) : selectedCategories
+        let cats = selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories
 
         let subs = allQuestions
             .filter { $0.level == level && cats.contains($0.category) }

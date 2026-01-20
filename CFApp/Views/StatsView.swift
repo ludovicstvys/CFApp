@@ -40,6 +40,71 @@ struct StatsView: View {
                 }
             }
 
+            if !vm.weeklyGoalAlerts.isEmpty {
+                Section("Alertes hebdo") {
+                    ForEach(vm.weeklyGoalAlerts) { alert in
+                        HStack {
+                            Label(alert.category.shortName, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            Spacer()
+                            Text("\(alert.answered)/\(alert.goal)")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        Text("Il manque \(alert.remaining) question(s) cette semaine.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+
+            Section("Objectifs hebdo par catégorie") {
+                if vm.availableCategories.isEmpty {
+                    Text("Aucune catégorie chargée.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.availableCategories) { cat in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Label(cat.shortName, systemImage: cat.systemImage)
+                                Spacer()
+                                let answered = vm.weeklyAnswered(for: cat)
+                                let goal = vm.weeklyGoal(for: cat)
+                                Text("\(answered)/\(goal)")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Stepper(
+                                "Objectif : \(vm.weeklyGoal(for: cat)) questions",
+                                value: bindingForCategoryGoal(cat),
+                                in: 0...500,
+                                step: 5
+                            )
+
+                            if vm.weeklyGoal(for: cat) > 0 {
+                                ProgressView(value: vm.weeklyProgress(for: cat))
+                                if vm.weeklyAnswered(for: cat) >= vm.weeklyGoal(for: cat) {
+                                    Text("Objectif atteint.")
+                                        .font(.caption)
+                                        .foregroundStyle(.green)
+                                } else {
+                                    let remaining = vm.weeklyGoal(for: cat) - vm.weeklyAnswered(for: cat)
+                                    Text("Il manque \(remaining) question(s) cette semaine.")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } else {
+                                Text("Objectif désactivé.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+
             Section("Tendances") {
                 #if canImport(Charts)
                 if #available(iOS 16.0, *) {
@@ -113,6 +178,49 @@ struct StatsView: View {
                                 .font(.subheadline.monospacedDigit())
                                 .foregroundStyle(.secondary)
                         }
+                    }
+                }
+            }
+
+            Section("Couverture par catégorie") {
+                if vm.categoryCoverage.allSatisfy({ $0.total == 0 }) {
+                    Text("Aucune question chargée.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.categoryCoverage) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Label(item.category.shortName, systemImage: item.category.systemImage)
+                                Spacer()
+                                Text("\(item.seen)/\(item.total)")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            ProgressView(value: item.progress)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+
+            Section("Couverture par sous-catégorie") {
+                if vm.subcategoryCoverage.isEmpty {
+                    Text("Aucune sous-catégorie chargée.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.subcategoryCoverage) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("\(item.category.shortName) • \(item.subcategory)")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text("\(item.seen)/\(item.total)")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                            ProgressView(value: item.progress)
+                        }
+                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -215,5 +323,12 @@ struct StatsView: View {
         let m = total / 60
         let s = total % 60
         return String(format: "%d:%02d", m, s)
+    }
+
+    private func bindingForCategoryGoal(_ category: CFACategory) -> Binding<Int> {
+        Binding(
+            get: { vm.weeklyGoal(for: category) },
+            set: { vm.setWeeklyGoal($0, for: category) }
+        )
     }
 }

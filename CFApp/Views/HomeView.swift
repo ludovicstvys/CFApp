@@ -63,6 +63,7 @@ struct HomeView: View {
 
                 GroupBox("Catégories") {
                     CategoryPickerView(
+                        categories: vm.availableCategories,
                         selected: $vm.selectedCategories,
                         onToggle: vm.toggleCategory(_:),
                         onSelectAll: vm.selectAllCategories,

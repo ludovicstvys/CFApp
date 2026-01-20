@@ -95,7 +95,7 @@ struct CSVQuestionImporter {
 
         let catRaw = field(row, header: header, keys: ["category"], fallbackIndex: 2) ?? ""
         guard let category = parseCategory(catRaw) else {
-            throw NSError(domain: "CSVImport", code: 4, userInfo: [NSLocalizedDescriptionKey: "Champ 'category' invalide."])
+            throw NSError(domain: "CSVImport", code: 4, userInfo: [NSLocalizedDescriptionKey: "Champ 'category' vide."])
         }
 
         let subcategory = field(row, header: header, keys: ["subcategory", "sub"], fallbackIndex: nil)
@@ -182,7 +182,8 @@ struct CSVQuestionImporter {
         var choices: [String] = []
 
         for (idx, key) in keys.enumerated() {
-            if let val = field(row, header: header, keys: [key], fallbackIndex: 4 + idx) {
+            let fallbackIndex = header.isEmpty ? (4 + idx) : nil
+            if let val = field(row, header: header, keys: [key], fallbackIndex: fallbackIndex) {
                 let trimmed = val.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !trimmed.isEmpty {
                     choices.append(trimmed)
@@ -215,19 +216,6 @@ struct CSVQuestionImporter {
     }
 
     private func parseCategory(_ raw: String) -> CFACategory? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        switch trimmed {
-        case "ethics", "ethique": return .ethics
-        case "quantitative methods", "quant", "quantitative", "qm": return .quantitativeMethods
-        case "economics", "economie": return .economics
-        case "financial reporting & analysis", "financial reporting and analysis", "fra": return .financialReporting
-        case "corporate finance", "corp fin": return .corporateFinance
-        case "equity investments", "equity": return .equity
-        case "fixed income", "fi": return .fixedIncome
-        case "derivatives", "derives": return .derivatives
-        case "alternative investments", "alts": return .alternativeInvestments
-        case "portfolio management & wealth planning", "portfolio management", "portfolio": return .portfolioManagement
-        default: return CFACategory(rawValue: raw.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
+        CFACategory.parse(raw)
     }
 }
