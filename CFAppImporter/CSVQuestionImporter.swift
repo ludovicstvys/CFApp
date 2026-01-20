@@ -123,8 +123,6 @@ struct CSVQuestionImporter {
         let difficultyRaw = field(row, header: header, keys: ["difficulty", "diff"], fallbackIndex: 11)
         let difficulty = difficultyRaw.flatMap { Int($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
 
-        let imageName = field(row, header: header, keys: ["image", "imagename"], fallbackIndex: 12)
-
         let question = CFAQuestion(
             id: id,
             level: level,
@@ -135,7 +133,7 @@ struct CSVQuestionImporter {
             correctIndices: correctIndices,
             explanation: explanation,
             difficulty: difficulty,
-            imageName: imageName,
+            imageName: nil,
             importedAt: Date()
         )
 

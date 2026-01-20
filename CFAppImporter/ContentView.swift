@@ -26,10 +26,10 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
 
-                    Text("Deposez un ZIP dans ce dossier. L'app importe le ZIP le plus recent.")
+                    Text("Deposez un CSV dans ce dossier. L'app importe le CSV le plus recent.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Text("Astuce: supprimez les anciens ZIPs ou renommez le nouveau fichier si besoin.")
+                    Text("Astuce: supprimez les anciens CSV ou renommez le nouveau fichier si besoin.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -39,7 +39,7 @@ struct ContentView: View {
                 Button {
                     vm.importFromInbox()
                 } label: {
-                    Label("Importer depuis le dossier", systemImage: "square.and.arrow.down")
+                    Label("Importer le CSV du dossier", systemImage: "square.and.arrow.down")
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -210,9 +210,9 @@ struct ContentView: View {
     private var header: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Import ZIP - Questions CFA")
+                Text("Import CSV - Questions CFA")
                     .font(.title2.weight(.bold))
-                Text("Placez un ZIP (CSV + images) dans le dossier d'import, puis lancez l'import.")
+                Text("Placez un CSV dans le dossier d'import, puis lancez l'import.")
                     .foregroundStyle(.secondary)
             }
             Spacer()
@@ -293,14 +293,14 @@ final class ImporterViewModel: ObservableObject {
                 }
 
                 ImportPaths.ensureDirectories()
-                guard let zipURL = findLatestZip(in: ImportPaths.importInbox) else {
-                    status = .failed("Aucun ZIP trouve dans le dossier d'import.")
+                guard let csvURL = findLatestCSV(in: ImportPaths.importInbox) else {
+                    status = .failed("Aucun CSV trouve dans le dossier d'import.")
                     return
                 }
 
-                let importer = ZipQuestionImporter()
-                let result = try importer.importQuestions(from: zipURL)
-                removeZipAfterImport(zipURL)
+                let data = try Data(contentsOf: csvURL)
+                let result = try CSVQuestionImporter().importQuestions(from: data)
+                removeCSVAfterImport(csvURL)
 
                 let existing = try QuestionDiskStore.shared.loadOrThrow()
                 let existingDeduped = QuestionDeduplicator.dedupe(existing)
@@ -326,7 +326,6 @@ final class ImporterViewModel: ObservableObject {
 
     func clearImported() {
         QuestionDiskStore.shared.clear()
-        QuestionAssetStore.shared.clear()
         errors = []
         warnings = []
         status = .idle
@@ -339,7 +338,7 @@ final class ImporterViewModel: ObservableObject {
 
     func buildReport() -> String {
         var lines: [String] = []
-        lines.append("Import ZIP - Rapport")
+        lines.append("Import CSV - Rapport")
         lines.append("Statut: \(statusText())")
         if case .success(let count) = status {
             lines.append("Questions importees: \(count)")
@@ -423,7 +422,7 @@ final class ImporterViewModel: ObservableObject {
         }
     }
 
-    private func findLatestZip(in dir: URL) -> URL? {
+    private func findLatestCSV(in dir: URL) -> URL? {
         let fm = FileManager.default
         guard let items = try? fm.contentsOfDirectory(
             at: dir,
@@ -433,8 +432,8 @@ final class ImporterViewModel: ObservableObject {
             return nil
         }
 
-        let zips = items.filter { $0.pathExtension.lowercased() == "zip" }
-        let sorted = zips.sorted { lhs, rhs in
+        let csvs = items.filter { $0.pathExtension.lowercased() == "csv" }
+        let sorted = csvs.sorted { lhs, rhs in
             let lDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             let rDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return lDate > rDate
@@ -442,7 +441,7 @@ final class ImporterViewModel: ObservableObject {
         return sorted.first
     }
 
-    private func removeZipAfterImport(_ url: URL) {
+    private func removeCSVAfterImport(_ url: URL) {
         let fm = FileManager.default
         try? fm.removeItem(at: url)
     }
