@@ -52,6 +52,17 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Formules") {
+                NavigationLink {
+                    FormulasView()
+                } label: {
+                    Label("Voir les formules par topic", systemImage: "function")
+                }
+                Text("Les formules sont chargées depuis un JSON embarqué.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Export") {
                 Button {
                     exportQuestions()

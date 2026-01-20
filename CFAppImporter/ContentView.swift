@@ -48,24 +48,59 @@ struct ContentView: View {
                     }
                 }
 
-                HStack(spacing: 12) {
-                    Button {
-                        vm.importFromInbox()
-                    } label: {
-                        Label("Importer le CSV du dossier", systemImage: "square.and.arrow.down")
-                    }
-                    .buttonStyle(.borderedProminent)
+            HStack(spacing: 12) {
+                Button {
+                    vm.importFromInbox()
+                } label: {
+                    Label("Importer le CSV du dossier", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(.borderedProminent)
 
-                    if vm.status == .importing {
-                        ProgressView()
+                if vm.status == .importing {
+                    ProgressView()
+                }
+            }
+
+            GroupBox("Formules") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Nom conseille: formule*.csv / formula*.csv")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Colonnes: category, topic, title, formula, notes, image")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 12) {
+                        Button {
+                            vm.importFormulasFromInbox()
+                        } label: {
+                            Label("Importer les formules (CSV)", systemImage: "function")
+                        }
+                        .buttonStyle(.bordered)
+
+                        if vm.formulaStatus == .importing {
+                            ProgressView()
+                        }
+                    }
+
+                    if case .success(let count) = vm.formulaStatus {
+                        Text("Import formules termine : \(count) formules importees.")
+                            .font(.headline)
+                            .foregroundStyle(.green)
+                    }
+
+                    if case .failed(let message) = vm.formulaStatus {
+                        Text("Echec import formules : \(message)")
+                            .foregroundStyle(.red)
                     }
                 }
+            }
 
-                if case .success(let count) = vm.status {
-                    Text("Import termine : \(count) questions importees.")
-                        .font(.headline)
-                        .foregroundStyle(.green)
-                }
+            if case .success(let count) = vm.status {
+                Text("Import termine : \(count) questions importees.")
+                    .font(.headline)
+                    .foregroundStyle(.green)
+            }
 
                 if case .failed(let message) = vm.status {
                     Text("Echec : \(message)")
@@ -85,20 +120,46 @@ struct ContentView: View {
                     }
                 }
 
-                if !vm.warnings.isEmpty {
-                    GroupBox("Avertissements (max 30)") {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(vm.warnings.prefix(30), id: \.self) { warn in
-                                    Text(warn).font(.footnote)
-                                }
+            if !vm.warnings.isEmpty {
+                GroupBox("Avertissements (max 30)") {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(vm.warnings.prefix(30), id: \.self) { warn in
+                                Text(warn).font(.footnote)
                             }
                         }
-                        .frame(maxHeight: 160)
                     }
+                    .frame(maxHeight: 160)
                 }
+            }
 
-                importStatus
+            if !vm.formulaErrors.isEmpty {
+                GroupBox("Erreurs formules (max 30)") {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(vm.formulaErrors.prefix(30), id: \.self) { err in
+                                Text(err).font(.footnote)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 160)
+                }
+            }
+
+            if !vm.formulaWarnings.isEmpty {
+                GroupBox("Avertissements formules (max 30)") {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(vm.formulaWarnings.prefix(30), id: \.self) { warn in
+                                Text(warn).font(.footnote)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 160)
+                }
+            }
+
+            importStatus
 
                 HStack(spacing: 12) {
                     Button {
@@ -256,8 +317,16 @@ struct ContentView: View {
             Text("Questions importees : \(vm.importedCount)")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+            Text("Formules importees : \(vm.formulaCount)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             if let error = vm.importedLoadError {
                 Text("Lecture impossible: \(error)")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+            if let error = vm.formulaLoadError {
+                Text("Lecture formules impossible: \(error)")
                     .font(.footnote)
                     .foregroundStyle(.red)
             }
@@ -279,12 +348,18 @@ final class ImporterViewModel: ObservableObject {
     @Published var warnings: [String] = []
     @Published var importedCount: Int = 0
     @Published var importedLoadError: String? = nil
+    @Published var formulaStatus: Status = .idle
+    @Published var formulaErrors: [String] = []
+    @Published var formulaWarnings: [String] = []
+    @Published var formulaCount: Int = 0
+    @Published var formulaLoadError: String? = nil
     @Published var questions: [CFAQuestion] = []
     @Published var selectedCategory: CFACategory? = nil
     @Published var selectedSubcategory: String? = nil
 
     init() {
         refreshImportedCount()
+        refreshFormulaCount()
     }
 
     var importInboxPath: String {
@@ -312,7 +387,10 @@ final class ImporterViewModel: ObservableObject {
                 }
 
                 ImportPaths.ensureDirectories()
-                guard let csvURL = findLatestCSV(in: ImportPaths.importInbox) else {
+                guard let csvURL = findLatestCSV(
+                    in: ImportPaths.importInbox,
+                    preferredPrefixes: ["question", "questions"]
+                ) ?? findLatestCSV(in: ImportPaths.importInbox) else {
                     status = .failed("Aucun CSV trouve dans le dossier d'import.")
                     return
                 }
@@ -339,6 +417,54 @@ final class ImporterViewModel: ObservableObject {
                 refreshImportedCount()
             } catch {
                 status = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    func importFormulasFromInbox() {
+        formulaStatus = .importing
+        formulaErrors = []
+        formulaWarnings = []
+
+        Task {
+            do {
+                guard ImportPaths.isValidRepoRoot(ImportPaths.repoRoot) else {
+                    formulaStatus = .failed("Repo introuvable. Definissez CFAPP_REPO_ROOT.")
+                    return
+                }
+
+                ImportPaths.ensureDirectories()
+                guard let csvURL = findLatestCSV(
+                    in: ImportPaths.importInbox,
+                    preferredPrefixes: ["formule", "formula"]
+                ) else {
+                    formulaStatus = .failed("Aucun CSV de formules trouve dans le dossier d'import.")
+                    return
+                }
+
+                let data = try Data(contentsOf: csvURL)
+                let result = try CSVFormulaImporter().importFormulas(from: data)
+                removeCSVAfterImport(csvURL)
+
+                let existing = FormulaDiskStore.shared.load()
+                let existingDeduped = FormulaDeduplicator.dedupe(existing)
+                let imageResult = attachFormulaImages(result.formulas)
+                let merged = FormulaDeduplicator.merge(
+                    existing: existingDeduped.formulas,
+                    incoming: imageResult.formulas
+                )
+                FormulaDiskStore.shared.save(merged.formulas)
+
+                let added = merged.formulas.count - existingDeduped.formulas.count
+                formulaStatus = .success(count: max(0, added))
+                formulaErrors = result.errors
+                formulaWarnings = result.warnings + imageResult.warnings
+                if merged.duplicates > 0 {
+                    formulaWarnings.append("Doublons ignores (categorie + topic + titre + formule): \(merged.duplicates)")
+                }
+                refreshFormulaCount()
+            } catch {
+                formulaStatus = .failed(error.localizedDescription)
             }
         }
     }
@@ -442,6 +568,10 @@ final class ImporterViewModel: ObservableObject {
     }
 
     private func findLatestCSV(in dir: URL) -> URL? {
+        findLatestCSV(in: dir, preferredPrefixes: [])
+    }
+
+    private func findLatestCSV(in dir: URL, preferredPrefixes: [String]) -> URL? {
         let fm = FileManager.default
         guard let items = try? fm.contentsOfDirectory(
             at: dir,
@@ -452,7 +582,14 @@ final class ImporterViewModel: ObservableObject {
         }
 
         let csvs = items.filter { $0.pathExtension.lowercased() == "csv" }
-        let sorted = csvs.sorted { lhs, rhs in
+        let preferred = preferredPrefixes.isEmpty ? csvs : csvs.filter { url in
+            let name = url.deletingPathExtension().lastPathComponent.lowercased()
+            return preferredPrefixes.contains { prefix in
+                name.hasPrefix(prefix.lowercased())
+            }
+        }
+        let candidates = preferred.isEmpty ? csvs : preferred
+        let sorted = candidates.sorted { lhs, rhs in
             let lDate = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             let rDate = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
             return lDate > rDate
@@ -479,11 +616,67 @@ final class ImporterViewModel: ObservableObject {
         normalizeFilters()
     }
 
+    private func refreshFormulaCount() {
+        let loaded = FormulaDiskStore.shared.load()
+        formulaCount = loaded.count
+        formulaLoadError = nil
+    }
+
     private func normalizeFilters() {
         if let selectedCategory, !availableCategories.contains(selectedCategory) {
             self.selectedCategory = nil
         }
         onCategoryChanged()
+    }
+
+    private func attachFormulaImages(_ formulas: [CFAFormula]) -> (formulas: [CFAFormula], warnings: [String]) {
+        let assetStore = FormulaAssetStore.shared
+        var warnings: [String] = []
+        let updated = formulas.map { formula in
+            guard let raw = formula.imageName?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !raw.isEmpty else {
+                return formula
+            }
+
+            guard let srcURL = resolveImageURL(named: raw, in: ImportPaths.importInbox) else {
+                warnings.append("Image introuvable pour formule \(formula.id): \(raw)")
+                return formula
+            }
+
+            guard let savedName = assetStore.saveImage(from: srcURL, preferredName: raw, formulaId: formula.id) else {
+                warnings.append("Echec copie image pour formule \(formula.id): \(raw)")
+                return formula
+            }
+
+            return CFAFormula(
+                id: formula.id,
+                category: formula.category,
+                topic: formula.topic,
+                title: formula.title,
+                formula: formula.formula,
+                notes: formula.notes,
+                imageName: savedName,
+                importedAt: formula.importedAt
+            )
+        }
+        return (updated, warnings)
+    }
+
+    private func resolveImageURL(named raw: String, in dir: URL) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+
+        let candidate = URL(fileURLWithPath: trimmed)
+        if candidate.isFileURL, FileManager.default.fileExists(atPath: candidate.path) {
+            return candidate
+        }
+
+        let direct = dir.appendingPathComponent(trimmed)
+        if FileManager.default.fileExists(atPath: direct.path) {
+            return direct
+        }
+
+        return nil
     }
 }
 

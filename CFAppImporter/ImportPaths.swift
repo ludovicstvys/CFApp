@@ -32,13 +32,21 @@ enum ImportPaths {
         appDataDir.appendingPathComponent("ImportedQuestions.json")
     }
 
+    static var formulasFile: URL {
+        appDataDir.appendingPathComponent("ImportedFormulas.json")
+    }
+
     static var assetsDir: URL {
         appDataDir.appendingPathComponent("ImportedAssets", isDirectory: true)
     }
 
+    static var formulaAssetsDir: URL {
+        appDataDir.appendingPathComponent("ImportedFormulaAssets", isDirectory: true)
+    }
+
     static func ensureDirectories() {
         let fm = FileManager.default
-        let dirs = [importInbox, appDataDir, assetsDir]
+        let dirs = [importInbox, appDataDir, assetsDir, formulaAssetsDir]
         for dir in dirs {
             if !fm.fileExists(atPath: dir.path) {
                 try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
