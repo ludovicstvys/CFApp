@@ -19,7 +19,7 @@ struct CSVFormulaImporter {
         }
     }
 
-    func importFormulas(from data: Data) throws -> ImportResult {
+    func importFormulas(from data: Data, delimiter: Character = ",") throws -> ImportResult {
         guard !data.isEmpty else { throw ImportError.emptyFile }
 
         guard let text = String(data: data, encoding: .utf8) else {
@@ -33,7 +33,7 @@ struct CSVFormulaImporter {
 
         guard !rows.isEmpty else { throw ImportError.noRows }
 
-        let headerCandidate = parseCSVRow(rows[0])
+        let headerCandidate = parseCSVRow(rows[0], delimiter: delimiter)
         let normalizedHeader = headerCandidate.map { $0.lowercased() }
         let hasHeader = normalizedHeader.contains("formula")
             || normalizedHeader.contains("title")
@@ -54,7 +54,7 @@ struct CSVFormulaImporter {
         var warnings: [String] = []
 
         for (i, rawRow) in rows.enumerated() where i >= startIndex {
-            let row = parseCSVRow(rawRow)
+            let row = parseCSVRow(rawRow, delimiter: delimiter)
             do {
                 let result = try parseFormula(row: row, header: header)
                 formulas.append(result.formula)
@@ -101,11 +101,11 @@ struct CSVFormulaImporter {
             throw NSError(domain: "CSVImport", code: 4, userInfo: [NSLocalizedDescriptionKey: "Champ 'formula' vide."])
         }
 
-        let notes = field(row, header: header, keys: ["notes", "note", "comment"], fallbackIndex: 4)
-            ?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let notes = field(row, header: header, keys: ["notes", "note", "comment"], fallbackIndex: 4)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        let imageName = field(row, header: header, keys: ["image", "imagename", "image_name"], fallbackIndex: 5)
-            ?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let imageName = field(row, header: header, keys: ["image", "imagename", "image_name"], fallbackIndex: 5)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
 
         let questionIdsRaw = field(
             row,
@@ -130,7 +130,7 @@ struct CSVFormulaImporter {
         return (formula, warnings)
     }
 
-    private func parseCSVRow(_ row: String) -> [String] {
+    private func parseCSVRow(_ row: String, delimiter: Character) -> [String] {
         var results: [String] = []
         var current = ""
         var insideQuotes = false
@@ -140,7 +140,7 @@ struct CSVFormulaImporter {
                 insideQuotes.toggle()
                 continue
             }
-            if char == "," && !insideQuotes {
+            if char == delimiter && !insideQuotes {
                 results.append(current)
                 current = ""
             } else {

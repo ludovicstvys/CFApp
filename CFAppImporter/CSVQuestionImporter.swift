@@ -20,7 +20,7 @@ struct CSVQuestionImporter {
         }
     }
 
-    func importQuestions(from data: Data) throws -> ImportResult {
+    func importQuestions(from data: Data, delimiter: Character = ",") throws -> ImportResult {
         guard !data.isEmpty else { throw ImportError.emptyFile }
 
         guard let text = String(data: data, encoding: .utf8) else {
@@ -34,7 +34,7 @@ struct CSVQuestionImporter {
 
         guard !rows.isEmpty else { throw ImportError.noRows }
 
-        let headerCandidate = parseCSVRow(rows[0])
+        let headerCandidate = parseCSVRow(rows[0], delimiter: delimiter)
         let hasHeader = headerCandidate.contains("stem")
             || headerCandidate.contains("question")
             || headerCandidate.contains("category")
@@ -54,7 +54,7 @@ struct CSVQuestionImporter {
         var warnings: [String] = []
 
         for (i, rawRow) in rows.enumerated() where i >= startIndex {
-            let row = parseCSVRow(rawRow)
+            let row = parseCSVRow(rawRow, delimiter: delimiter)
             do {
                 let result = try parseQuestion(row: row, header: header)
                 questions.append(result.question)
@@ -110,13 +110,13 @@ struct CSVQuestionImporter {
             throw NSError(domain: "CSVImport", code: 6, userInfo: [NSLocalizedDescriptionKey: "Choix insuffisants (au moins 2)."])
         }
 
-        let id = QuestionDeduplicator.stableId(stem: stem, choices: choices)
-
         let answerRaw = field(row, header: header, keys: ["answerindex", "answer", "correct"], fallbackIndex: 9) ?? ""
         let correctIndices = parseAnswerIndices(answerRaw, choicesCount: choices.count)
         if correctIndices.isEmpty {
             throw NSError(domain: "CSVImport", code: 7, userInfo: [NSLocalizedDescriptionKey: "answerIndex invalide (ex: 1 ou A|C)."])
         }
+
+        let id = QuestionDeduplicator.stableId(stem: stem, choices: choices, correctIndices: correctIndices)
 
         let explanation = (field(row, header: header, keys: ["explanation", "justification"], fallbackIndex: 10) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -141,7 +141,7 @@ struct CSVQuestionImporter {
         return (question, warnings)
     }
 
-    private func parseCSVRow(_ row: String) -> [String] {
+    private func parseCSVRow(_ row: String, delimiter: Character) -> [String] {
         var results: [String] = []
         var current = ""
         var insideQuotes = false
@@ -151,7 +151,7 @@ struct CSVQuestionImporter {
                 insideQuotes.toggle()
                 continue
             }
-            if char == "," && !insideQuotes {
+            if char == delimiter && !insideQuotes {
                 results.append(current)
                 current = ""
             } else {

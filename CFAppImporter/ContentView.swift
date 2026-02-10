@@ -12,6 +12,26 @@ import UniformTypeIdentifiers
 import AppKit
 #endif
 
+enum CSVDelimiter: String, CaseIterable, Identifiable {
+    case comma = ","
+    case semicolon = ";"
+    case tab = "\t"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .comma: return "Virgule (,)"
+        case .semicolon: return "Point-virgule (;)"
+        case .tab: return "Tabulation"
+        }
+    }
+
+    var character: Character {
+        rawValue.first ?? ","
+    }
+}
+
 struct ContentView: View {
     @StateObject private var vm = ImporterViewModel()
     @State private var showReportExporter = false
@@ -45,6 +65,18 @@ struct ContentView: View {
                             Label("Ouvrir le dossier", systemImage: "folder")
                         }
                         .buttonStyle(.bordered)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Separateur CSV")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            Picker("Separateur CSV", selection: $vm.csvDelimiter) {
+                                ForEach(CSVDelimiter.allCases) { delimiter in
+                                    Text(delimiter.label).tag(delimiter)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
                     }
                 }
 
@@ -359,6 +391,7 @@ final class ImporterViewModel: ObservableObject {
     @Published var questions: [CFAQuestion] = []
     @Published var selectedCategory: CFACategory? = nil
     @Published var selectedSubcategory: String? = nil
+    @Published var csvDelimiter: CSVDelimiter = .comma
 
     init() {
         refreshImportedCount()
@@ -399,7 +432,7 @@ final class ImporterViewModel: ObservableObject {
                 }
 
                 let data = try Data(contentsOf: csvURL)
-                let result = try CSVQuestionImporter().importQuestions(from: data)
+                let result = try CSVQuestionImporter().importQuestions(from: data, delimiter: csvDelimiter.character)
                 removeCSVAfterImport(csvURL)
 
                 let existing = try QuestionDiskStore.shared.loadOrThrow()
@@ -415,7 +448,7 @@ final class ImporterViewModel: ObservableObject {
                 errors = result.errors
                 warnings = result.warnings
                 if merged.duplicates > 0 {
-                    warnings.append("Doublons ignores (stem + 4 choix): \(merged.duplicates)")
+                    warnings.append("Doublons ignores (stem + choix + bonnes reponses): \(merged.duplicates)")
                 }
                 refreshImportedCount()
             } catch {
@@ -446,7 +479,7 @@ final class ImporterViewModel: ObservableObject {
                 }
 
                 let data = try Data(contentsOf: csvURL)
-                let result = try CSVFormulaImporter().importFormulas(from: data)
+                let result = try CSVFormulaImporter().importFormulas(from: data, delimiter: csvDelimiter.character)
                 removeCSVAfterImport(csvURL)
 
                 let existing = FormulaDiskStore.shared.load()

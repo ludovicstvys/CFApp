@@ -2,8 +2,11 @@ import Foundation
 
 extension CFAQuestion {
     var dedupeKey: String {
-        let parts = [stem] + Array(choices.prefix(4))
-        return parts.map { Self.normalizeDedupeValue($0) }.joined(separator: "|")
+        QuestionDeduplicator.dedupeKey(
+            stem: stem,
+            choices: choices,
+            correctIndices: correctIndices
+        )
     }
 
     fileprivate static func normalizeDedupeValue(_ value: String) -> String {
@@ -14,13 +17,29 @@ extension CFAQuestion {
 }
 
 struct QuestionDeduplicator {
-    static func dedupeKey(stem: String, choices: [String]) -> String {
-        let parts = [stem] + Array(choices.prefix(4))
-        return parts.map { CFAQuestion.normalizeDedupeValue($0) }.joined(separator: "|")
+    static func dedupeKey(stem: String, choices: [String], correctIndices: [Int] = []) -> String {
+        let normalizedStem = CFAQuestion.normalizeDedupeValue(stem)
+        let normalizedChoices = choices
+            .map { CFAQuestion.normalizeDedupeValue($0) }
+            .filter { !$0.isEmpty }
+            .sorted()
+
+        let correctTexts = correctIndices.compactMap { idx -> String? in
+            guard idx >= 0 && idx < choices.count else { return nil }
+            let normalized = CFAQuestion.normalizeDedupeValue(choices[idx])
+            return normalized.isEmpty ? nil : normalized
+        }
+        let normalizedCorrect = Array(Set(correctTexts)).sorted()
+
+        return [
+            normalizedStem,
+            normalizedChoices.joined(separator: "|"),
+            normalizedCorrect.joined(separator: "|")
+        ].joined(separator: "||")
     }
 
-    static func stableId(stem: String, choices: [String]) -> String {
-        stableId(for: dedupeKey(stem: stem, choices: choices))
+    static func stableId(stem: String, choices: [String], correctIndices: [Int]) -> String {
+        stableId(for: dedupeKey(stem: stem, choices: choices, correctIndices: correctIndices))
     }
 
     static func stableId(for key: String) -> String {
