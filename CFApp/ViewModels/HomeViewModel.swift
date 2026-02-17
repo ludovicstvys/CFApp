@@ -1,50 +1,61 @@
 import Foundation
 import Combine
 
-
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published var level: CFALevel = .level1
     @Published var mode: QuizMode = .revision {
-        didSet {
-            refreshFiltersForMode()
-        }
+        didSet { refreshFiltersForMode() }
     }
     @Published var selectedCategories: Set<CFACategory> = []
-
-    /// Sous-catégories sélectionnées (si vide => pas de filtre)
+    /// Selected subcategories/topics (if empty => no sub-filter).
     @Published var selectedSubcategories: Set<String> = []
 
     @Published var numberOfQuestions: Int = 15
     @Published var shuffleAnswers: Bool = false
-    @Published var timeLimitMinutes: Int = 0 // 0 = pas de limite
+    @Published var timeLimitMinutes: Int = 0
+    @Published var mockExamMinutes: Int = 180
 
-    // Catalog (pour dériver les sous-catégories disponibles)
     @Published private(set) var availableCategories: [CFACategory] = []
     @Published private(set) var availableSubcategories: [String] = []
     @Published private(set) var savedSessionSummary: QuizSessionSummary? = nil
 
     private let repo: QuestionRepository
+    private let sessionStore: QuizSessionStoring
     private var allQuestions: [CFAQuestion] = []
     private var allFormulas: [CFAFormula] = []
     private var questionCategories: [CFACategory] = []
     private var formulaCategories: [CFACategory] = []
 
-    init(repo: QuestionRepository = HybridQuestionRepository()) {
+    init(
+        repo: QuestionRepository = AppDependencies.shared.questionRepository,
+        sessionStore: QuizSessionStoring = AppDependencies.shared.sessionStore
+    ) {
         self.repo = repo
+        self.sessionStore = sessionStore
         loadCatalog()
         refreshSavedSession()
     }
 
     var config: QuizConfig {
-        QuizConfig(
+        let effectiveTimeLimit: Int?
+        switch mode {
+        case .test:
+            effectiveTimeLimit = timeLimitMinutes > 0 ? timeLimitMinutes * 60 : nil
+        case .mock:
+            effectiveTimeLimit = max(30, mockExamMinutes) * 60
+        default:
+            effectiveTimeLimit = nil
+        }
+
+        return QuizConfig(
             level: level,
             mode: mode,
             categories: selectedCategories.isEmpty ? Set(availableCategories) : selectedCategories,
             subcategories: selectedSubcategories,
             numberOfQuestions: max(1, numberOfQuestions),
             shuffleAnswers: shuffleAnswers,
-            timeLimitSeconds: timeLimitMinutes > 0 ? timeLimitMinutes * 60 : nil
+            timeLimitSeconds: effectiveTimeLimit
         )
     }
 
@@ -88,11 +99,11 @@ final class HomeViewModel: ObservableObject {
     }
 
     func refreshSavedSession() {
-        savedSessionSummary = QuizSessionStore.shared.loadSummary()
+        savedSessionSummary = sessionStore.loadSummary()
     }
 
     func clearSavedSession() {
-        QuizSessionStore.shared.clear()
+        sessionStore.clear()
         refreshSavedSession()
     }
 
@@ -103,6 +114,7 @@ final class HomeViewModel: ObservableObject {
             allQuestions = try repo.loadAllQuestions()
         } catch {
             allQuestions = []
+            AppLogger.warning("HomeViewModel failed to load questions: \(error.localizedDescription)")
         }
         questionCategories = Array(Set(allQuestions.map { $0.category }))
             .sorted { $0.rawValue < $1.rawValue }
@@ -111,6 +123,7 @@ final class HomeViewModel: ObservableObject {
             allFormulas = try LocalFormulaStore().loadAllFormulas()
         } catch {
             allFormulas = []
+            AppLogger.warning("HomeViewModel failed to load formulas: \(error.localizedDescription)")
         }
         formulaCategories = Array(Set(allFormulas.map { $0.category }))
             .sorted { $0.rawValue < $1.rawValue }
@@ -135,7 +148,6 @@ final class HomeViewModel: ObservableObject {
             availableSubcategories = Array(Set(subs)).sorted()
         }
 
-        // Si on filtre, supprimer les sous-catégories qui ne sont plus disponibles
         if !selectedSubcategories.isEmpty {
             selectedSubcategories = selectedSubcategories.intersection(Set(availableSubcategories))
         }

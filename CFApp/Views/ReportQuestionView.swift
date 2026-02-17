@@ -50,7 +50,9 @@ struct ReportQuestionView: View {
                 }
             }
             .navigationTitle("Signaler")
+#if os(iOS) || os(tvOS) || os(visionOS)
             .navigationBarTitleDisplayMode(.inline)
+#endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Annuler") { dismiss() }
@@ -72,7 +74,7 @@ struct ReportQuestionView: View {
 
     private func submit() {
         let report = QuestionReport(question: question, issueType: issueType, note: note)
-        QuestionReportStore.shared.saveReport(report)
+        AppDependencies.shared.questionReportStore.saveReport(report)
         Haptics.success()
         dismiss()
     }

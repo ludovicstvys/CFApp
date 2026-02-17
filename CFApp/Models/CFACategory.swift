@@ -69,14 +69,14 @@ struct CFACategory: Hashable, Codable, Identifiable {
     }
 
     private static let knownInfo: [String: CategoryInfo] = [
-        normalizeKey("Ethics"): CategoryInfo(shortName: "Éthique", systemImage: "shield.lefthalf.filled"),
+        normalizeKey("Ethics"): CategoryInfo(shortName: "Ethique", systemImage: "shield.lefthalf.filled"),
         normalizeKey("Quantitative Methods"): CategoryInfo(shortName: "Quant", systemImage: "function"),
-        normalizeKey("Economics"): CategoryInfo(shortName: "Éco", systemImage: "globe.europe.africa.fill"),
+        normalizeKey("Economics"): CategoryInfo(shortName: "Eco", systemImage: "globe.europe.africa.fill"),
         normalizeKey("Financial Reporting & Analysis"): CategoryInfo(shortName: "FRA", systemImage: "doc.text.magnifyingglass"),
         normalizeKey("Corporate Finance"): CategoryInfo(shortName: "Corp. Fin.", systemImage: "building.2.fill"),
         normalizeKey("Equity Investments"): CategoryInfo(shortName: "Equity", systemImage: "chart.line.uptrend.xyaxis"),
         normalizeKey("Fixed Income"): CategoryInfo(shortName: "Fixed Income", systemImage: "banknote.fill"),
-        normalizeKey("Derivatives"): CategoryInfo(shortName: "Dérivés", systemImage: "arrow.triangle.2.circlepath"),
+        normalizeKey("Derivatives"): CategoryInfo(shortName: "Derives", systemImage: "arrow.triangle.2.circlepath"),
         normalizeKey("Alternative Investments"): CategoryInfo(shortName: "Alt. Inv.", systemImage: "cube.fill"),
         normalizeKey("Portfolio Management & Wealth Planning"): CategoryInfo(shortName: "Portfolio", systemImage: "briefcase.fill")
     ]

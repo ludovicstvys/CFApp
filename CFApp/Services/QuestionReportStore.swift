@@ -58,37 +58,78 @@ struct QuestionReport: Identifiable, Codable {
 final class QuestionReportStore {
     static let shared = QuestionReportStore()
 
-    private let key = "cfaquiz.questionReports.v1"
-    private let defaults = UserDefaults.standard
+    private struct Envelope: Codable {
+        let version: Int
+        let reports: [QuestionReport]
+    }
 
-    private init() {}
+    private let key = "cfaquiz.questionReports.v1"
+    private let currentVersion = 2
+    private let defaults: UserDefaults
+    private let queue = DispatchQueue(label: "cfaquiz.questionReportStore")
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     func loadReports() -> [QuestionReport] {
-        guard let data = defaults.data(forKey: key) else { return [] }
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode([QuestionReport].self, from: data)
-        } catch {
-            return []
+        queue.sync {
+            decodeReports(from: defaults.data(forKey: key)) ?? []
         }
     }
 
     func saveReport(_ report: QuestionReport) {
-        var all = loadReports()
-        all.insert(report, at: 0)
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(all)
-            defaults.set(data, forKey: key)
-        } catch {
-            // ignore
+        queue.sync {
+            var all = decodeReports(from: defaults.data(forKey: key)) ?? []
+            all.insert(report, at: 0)
+            persist(all)
+        }
+    }
+
+    func saveReports(_ reports: [QuestionReport]) {
+        queue.sync {
+            persist(reports)
         }
     }
 
     func clear() {
-        defaults.removeObject(forKey: key)
+        queue.sync {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    private func decodeReports(from data: Data?) -> [QuestionReport]? {
+        guard let data else { return nil }
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let envelope = try decoder.decode(Envelope.self, from: data)
+            return envelope.reports
+        } catch {
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let legacy = try decoder.decode([QuestionReport].self, from: data)
+                persist(legacy)
+                AppLogger.info("QuestionReportStore migrated legacy payload to envelope v\(currentVersion).")
+                return legacy
+            } catch {
+                AppLogger.error("QuestionReportStore decode failed: \(error.localizedDescription)")
+                return nil
+            }
+        }
+    }
+
+    private func persist(_ reports: [QuestionReport]) {
+        do {
+            let envelope = Envelope(version: currentVersion, reports: reports)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(envelope)
+            defaults.set(data, forKey: key)
+        } catch {
+            AppLogger.error("QuestionReportStore persist failed: \(error.localizedDescription)")
+        }
     }
 }

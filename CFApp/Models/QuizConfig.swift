@@ -4,11 +4,22 @@ struct QuizConfig: Hashable, Codable {
     let level: CFALevel
     let mode: QuizMode
     let categories: Set<CFACategory>
-    /// Si vide => toutes les sous-catégories (pas de filtre)
+    /// If empty => no subcategory filter.
     let subcategories: Set<String>
     let numberOfQuestions: Int
     let shuffleAnswers: Bool
-    let timeLimitSeconds: Int? // surtout pour mode Test (optionnel)
+    let timeLimitSeconds: Int?
+
+    var usesCountdown: Bool {
+        mode == .test || mode == .mock
+    }
+
+    var effectiveTimeLimitSeconds: Int? {
+        if mode == .mock {
+            return timeLimitSeconds ?? (180 * 60)
+        }
+        return timeLimitSeconds
+    }
 
     static func `default`() -> QuizConfig {
         QuizConfig(

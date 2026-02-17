@@ -9,6 +9,7 @@ struct CSVImportView: View {
     @State private var warnings: [String] = []
     @State private var showReportExporter = false
     @State private var reportDocument: TextDocument? = nil
+    @State private var isDropTarget = false
 
     enum Status: Equatable {
         case idle
@@ -19,52 +20,56 @@ struct CSVImportView: View {
 
     var body: some View {
         Form {
-            Section("Importer des questions (ZIP)") {
-                Text("Le ZIP contient un CSV + des images. Le tout est importé et stocké localement puis fusionné avec le bundle (offline).")
+            Section("Importer des questions (ZIP/CSV)") {
+                Text("Le ZIP peut contenir un CSV + des images. Le tout est importe et stocke localement, puis fusionne avec le bundle.")
                     .foregroundStyle(.secondary)
 
                 Button {
                     showImporter = true
                 } label: {
-                    Label("Choisir un fichier ZIP...", systemImage: "square.and.arrow.down")
+                    Label("Choisir un fichier ZIP ou CSV...", systemImage: "square.and.arrow.down")
                 }
+                .accessibilityHint("Ouvre le selecteur de fichiers")
+
+                Text("Sur macOS, vous pouvez aussi glisser-deposer un fichier ici.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
 
                 if status == .importing {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("Import en cours…").foregroundStyle(.secondary)
+                        Text("Import en cours...").foregroundStyle(.secondary)
                     }
                 }
 
                 if importedCount > 0, status == .success {
-                    Text("✅ Import terminé : \(importedCount) questions importées.")
+                    Text("Import termine : \(importedCount) questions importees.")
                         .font(.subheadline.weight(.semibold))
                 }
 
                 if case .failed(let msg) = status {
-                    Text("❌ \(msg)")
+                    Text("Echec: \(msg)")
                         .foregroundStyle(.red)
                 }
             }
 
             Section("Format attendu") {
                 Text("""
-            En-tête recommandé :
+            En-tete recommande :
             id, level, category, subcategory, stem, choiceA, choiceB, choiceC, choiceD, answerIndex, explanation, difficulty, image
             """)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
                 Text("""
-            • category : ex: Ethics, Quantitative Methods, FRA (alias accepté)
+            • category : ex: Ethics, Quantitative Methods, FRA (alias accepte)
             • subcategory : texte libre (ex: Time Value of Money)
             • answerIndex : 0..3 ou A/B/C/D (multi : A|C ou 0|2)
-            - image : nom de fichier dans le ZIP (ex: images/q1.png)
+            • image : nom de fichier dans le ZIP (ex: images/q1.png)
             """)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             }
-
 
             if !errors.isEmpty {
                 Section("Erreurs") {
@@ -72,7 +77,7 @@ struct CSVImportView: View {
                         Text(e).font(.footnote)
                     }
                     if errors.count > 30 {
-                        Text("… \(errors.count - 30) erreurs supplémentaires")
+                        Text("... \(errors.count - 30) erreurs supplementaires")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -85,7 +90,7 @@ struct CSVImportView: View {
                         Text(w).font(.footnote)
                     }
                     if warnings.count > 30 {
-                        Text("… \(warnings.count - 30) avertissements supplémentaires")
+                        Text("... \(warnings.count - 30) avertissements supplementaires")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
@@ -104,21 +109,26 @@ struct CSVImportView: View {
             }
 
             Section("Gestion") {
-                Text("Questions importées actuellement : \(QuestionDiskStore.shared.load().count)")
+                Text("Questions importees actuellement : \(AppDependencies.shared.questionDiskStore.load().count)")
                     .foregroundStyle(.secondary)
 
                 Button(role: .destructive) {
-                    QuestionDiskStore.shared.clear()
+                    AppDependencies.shared.questionDiskStore.clear()
                     QuestionAssetStore.shared.clear()
                     importedCount = 0
                     errors = []
+                    warnings = []
                     status = .idle
                 } label: {
-                    Label("Supprimer les questions importées", systemImage: "trash")
+                    Label("Supprimer les questions importees", systemImage: "trash")
                 }
             }
         }
-        .navigationTitle("Import ZIP")
+        .navigationTitle("Import ZIP/CSV")
+        .overlay(dropOverlay)
+        .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTarget) { providers in
+            handleDrop(providers: providers)
+        }
         .fileExporter(
             isPresented: $showReportExporter,
             document: reportDocument ?? TextDocument(text: ""),
@@ -129,16 +139,82 @@ struct CSVImportView: View {
         }
         .fileImporter(
             isPresented: $showImporter,
-            allowedContentTypes: [UTType.zip],
+            allowedContentTypes: [UTType.zip, UTType.commaSeparatedText, UTType.plainText],
             allowsMultipleSelection: false
         ) { result in
             switch result {
             case .success(let urls):
                 guard let url = urls.first else { return }
-                importZIP(url: url)
+                handlePickedFile(url: url)
             case .failure(let error):
                 status = .failed(error.localizedDescription)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var dropOverlay: some View {
+        if isDropTarget {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [8]))
+                .padding(8)
+                .overlay {
+                    Text("Deposez un ZIP/CSV pour importer")
+                        .font(.headline)
+                        .padding(12)
+                        .background(.thinMaterial, in: Capsule())
+                }
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        guard let provider = providers.first(where: { $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) }) else {
+            return false
+        }
+
+        provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, error in
+            if let error {
+                DispatchQueue.main.async {
+                    status = .failed(error.localizedDescription)
+                }
+                return
+            }
+
+            guard let url = extractURL(from: item) else {
+                DispatchQueue.main.async {
+                    status = .failed("Impossible de lire l'URL du fichier depose.")
+                }
+                return
+            }
+
+            DispatchQueue.main.async {
+                handlePickedFile(url: url)
+            }
+        }
+        return true
+    }
+
+    private func extractURL(from item: NSSecureCoding?) -> URL? {
+        if let url = item as? URL { return url }
+        if let nsurl = item as? NSURL { return nsurl as URL }
+        if let data = item as? Data {
+            return URL(dataRepresentation: data, relativeTo: nil)
+        }
+        if let string = item as? String, let url = URL(string: string) {
+            return url
+        }
+        return nil
+    }
+
+    private func handlePickedFile(url: URL) {
+        let ext = url.pathExtension.lowercased()
+        if ext == "zip" {
+            importZIP(url: url)
+        } else if ext == "csv" || ext == "txt" {
+            importCSV(url: url)
+        } else {
+            status = .failed("Type de fichier non supporte: .\(ext)")
         }
     }
 
@@ -151,16 +227,52 @@ struct CSVImportView: View {
         Task {
             do {
                 let canAccess = url.startAccessingSecurityScopedResource()
-                defer { if canAccess { url.stopAccessingSecurityScopedResource() } }
+                defer {
+                    if canAccess { url.stopAccessingSecurityScopedResource() }
+                }
 
                 let importer = ZipQuestionImporter()
                 let result = try importer.importQuestions(from: url)
 
-                // merge avec existant
-                let existing = QuestionDiskStore.shared.load()
+                let existing = AppDependencies.shared.questionDiskStore.load()
                 var dict = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
                 for q in result.questions { dict[q.id] = q }
-                QuestionDiskStore.shared.save(Array(dict.values))
+                AppDependencies.shared.questionDiskStore.save(Array(dict.values))
+
+                await MainActor.run {
+                    importedCount = result.questions.count
+                    errors = result.errors
+                    warnings = result.warnings
+                    status = .success
+                }
+            } catch {
+                await MainActor.run {
+                    status = .failed(error.localizedDescription)
+                }
+            }
+        }
+    }
+
+    private func importCSV(url: URL) {
+        status = .importing
+        errors = []
+        warnings = []
+        importedCount = 0
+
+        Task {
+            do {
+                let canAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if canAccess { url.stopAccessingSecurityScopedResource() }
+                }
+
+                let data = try Data(contentsOf: url)
+                let result = try CSVQuestionImporter().importQuestions(from: data)
+
+                let existing = AppDependencies.shared.questionDiskStore.load()
+                var dict = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+                for q in result.questions { dict[q.id] = q }
+                AppDependencies.shared.questionDiskStore.save(Array(dict.values))
 
                 await MainActor.run {
                     importedCount = result.questions.count
@@ -178,9 +290,9 @@ struct CSVImportView: View {
 
     private func buildReport() -> String {
         var lines: [String] = []
-        lines.append("Import ZIP - Rapport")
+        lines.append("Import ZIP/CSV - Rapport")
         lines.append("Statut: \(statusText())")
-        lines.append("Questions importées: \(importedCount)")
+        lines.append("Questions importees: \(importedCount)")
         lines.append("")
 
         if !errors.isEmpty {

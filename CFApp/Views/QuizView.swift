@@ -9,40 +9,65 @@ struct QuizView: View {
     let startMode: StartMode
     @StateObject private var vm = QuizViewModel()
     @State private var reportQuestion: CFAQuestion? = nil
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         Group {
             switch vm.state {
             case .idle, .loading:
                 loading
-
             case .failed(let message):
                 error(message)
-
             case .running:
                 running
-
             case .finished:
                 ResultsView(
                     config: vm.config,
                     score: vm.score,
                     total: vm.total,
                     records: vm.records,
+                    answeredCount: vm.answeredCount,
+                    unansweredCount: vm.unansweredCount,
                     onRestart: { vm.restart() },
-                    onDone: { /* pop via nav */ }
+                    onDone: { }
                 )
             }
         }
         .navigationTitle(vm.config.mode.title)
+#if os(iOS) || os(tvOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.inline)
+#endif
         .toolbar {
             if vm.state == .running, let current = vm.current {
+#if os(macOS)
+                ToolbarItem(placement: .automatic) {
+#else
                 ToolbarItem(placement: .navigationBarTrailing) {
+#endif
                     Button {
                         reportQuestion = current.original
                     } label: {
                         Label("Signaler", systemImage: "exclamationmark.bubble")
                     }
+                    .keyboardShortcut("r", modifiers: [.command])
+                    .accessibilityHint("Signaler un probleme sur la question courante")
+                }
+            }
+
+            if vm.state == .running, vm.config.usesCountdown {
+#if os(macOS)
+                ToolbarItem(placement: .automatic) {
+#else
+                ToolbarItem(placement: .navigationBarLeading) {
+#endif
+                    Button {
+                        vm.pauseSession()
+                        dismiss()
+                    } label: {
+                        Label("Pause", systemImage: "pause.fill")
+                    }
+                    .keyboardShortcut("p", modifiers: [.command])
+                    .accessibilityHint("Met en pause puis revient a l'ecran precedent")
                 }
             }
         }
@@ -64,7 +89,7 @@ struct QuizView: View {
     private var loading: some View {
         VStack(spacing: 14) {
             ProgressView()
-            Text("Chargement des questions…")
+            Text("Chargement des questions...")
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -75,13 +100,13 @@ struct QuizView: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.largeTitle)
-            Text("Impossible de démarrer le quiz")
+            Text("Impossible de demarrer le quiz")
                 .font(.headline)
             Text(message)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            PrimaryButton(title: "Réessayer", systemImage: "arrow.clockwise") {
+            PrimaryButton(title: "Reessayer", systemImage: "arrow.clockwise") {
                 vm.start(config: vm.config)
             }
         }
@@ -108,7 +133,7 @@ struct QuizView: View {
                 )
 
                 if current.correctIndices.count > 1 {
-                    Text("Plusieurs réponses possibles.")
+                    Text("Plusieurs reponses possibles.")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
@@ -123,7 +148,6 @@ struct QuizView: View {
                             onTap: {
                                 vm.toggleSelection(idx)
                                 if vm.config.mode == .revision, vm.isSubmitted {
-                                    // pas de haptics si deja soumis
                                     return
                                 }
                             }
@@ -139,7 +163,6 @@ struct QuizView: View {
 
                 actionBar(current: current)
             }
-
         }
         .padding()
         .animation(.snappy, value: vm.currentIndex)
@@ -147,6 +170,7 @@ struct QuizView: View {
 
     private func actionBar(current: QuizEngine.PreparedQuestion) -> some View {
         let isMulti = current.correctIndices.count > 1
+        let isTestLike = vm.config.mode == .test || vm.config.mode == .mock
 
         return HStack(spacing: 10) {
             Button {
@@ -156,6 +180,8 @@ struct QuizView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
+            .keyboardShortcut("s", modifiers: [])
+            .accessibilityHint("Passe la question courante")
 
             if isMulti {
                 Button {
@@ -169,11 +195,15 @@ struct QuizView: View {
                         correct ? Haptics.success() : Haptics.error()
                     }
                 } label: {
-                    Label(vm.config.mode == .test ? "Valider & Suivant" : (vm.isSubmitted ? "Suivant" : "Valider"), systemImage: "checkmark")
-                        .frame(maxWidth: .infinity)
+                    Label(
+                        isTestLike ? "Valider & Suivant" : (vm.isSubmitted ? "Suivant" : "Valider"),
+                        systemImage: "checkmark"
+                    )
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(vm.config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
+                .keyboardShortcut(.return, modifiers: [])
             } else {
                 Button {
                     if vm.config.mode == .revision {
@@ -187,6 +217,7 @@ struct QuizView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(vm.config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
+                .keyboardShortcut(.return, modifiers: [])
             }
         }
     }
@@ -204,7 +235,7 @@ struct QuizView: View {
             HStack(spacing: 8) {
                 Image(systemName: correct ? "checkmark.seal.fill" : "xmark.seal.fill")
                     .foregroundStyle(correct ? .green : .red)
-                Text(correct ? "Bonne réponse" : "Mauvaise réponse")
+                Text(correct ? "Bonne reponse" : "Mauvaise reponse")
                     .font(.headline)
             }
 

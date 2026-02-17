@@ -26,6 +26,8 @@ struct ProgressHeaderView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(.thinMaterial, in: Capsule())
+                        .accessibilityLabel("Temps restant")
+                        .accessibilityValue(timeString(remainingSeconds))
                 } else {
                     Text("Score: \(score)")
                         .font(.subheadline)

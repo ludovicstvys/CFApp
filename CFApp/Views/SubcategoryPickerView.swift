@@ -15,19 +15,20 @@ struct SubcategoryPickerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if available.isEmpty {
-                Text("Aucune sous-catégorie détectée pour ces filtres.")
+                Text("Aucune sous-categorie detectee pour ces filtres.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
                 LazyVGrid(columns: columns, spacing: 10) {
                     ForEach(available, id: \.self) { sub in
+                        let isSelected = selected.contains(sub)
                         Button {
                             onToggle(sub)
                             Haptics.light()
                         } label: {
                             HStack(spacing: 10) {
-                                Image(systemName: selected.contains(sub) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selected.contains(sub) ? Color.accentColor : .secondary)
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(isSelected ? Color.accentColor : .secondary)
 
                                 Text(sub)
                                     .font(.subheadline.weight(.semibold))
@@ -36,21 +37,23 @@ struct SubcategoryPickerView: View {
                                 Spacer(minLength: 0)
                             }
                             .padding(10)
-                            .background(selected.contains(sub) ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08),
-                                        in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .background(
+                                isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08),
+                                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            )
                         }
                         .buttonStyle(.plain)
                     }
                 }
 
                 HStack(spacing: 10) {
-                    Button("Tout sélectionner", action: onSelectAll)
+                    Button("Tout selectionner", action: onSelectAll)
                     Spacer()
                     Button("Tout effacer (pas de filtre)", action: onClear)
                 }
                 .font(.footnote.weight(.semibold))
 
-                Text("Astuce : si rien n’est sélectionné, on ne filtre pas (toutes les sous-catégories).")
+                Text("Astuce : si rien n'est selectionne, on ne filtre pas.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

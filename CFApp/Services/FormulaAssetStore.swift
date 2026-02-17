@@ -1,14 +1,15 @@
 import Foundation
 #if canImport(UIKit)
 import UIKit
-public typealias PlatformImage = UIImage
 #elseif canImport(AppKit)
 import AppKit
-public typealias PlatformImage = NSImage
 #endif
 
 final class FormulaAssetStore {
     static let shared = FormulaAssetStore()
+    private let cache = NSCache<NSString, PlatformImage>()
+    private let ioQueue = DispatchQueue(label: "cfaquiz.formulaAssetStore", qos: .utility)
+
     private init() {}
 
     private var assetsDir: URL {
@@ -33,13 +34,30 @@ final class FormulaAssetStore {
     }
 
     func loadImage(named name: String) -> PlatformImage? {
-        let url = imageURL(for: name)
+        if let cached = cache.object(forKey: name as NSString) {
+            return cached
+        }
+
+        return ioQueue.sync {
+            let url = imageURL(for: name)
 #if canImport(UIKit)
-        return UIImage(contentsOfFile: url.path)
+            guard let image = UIImage(contentsOfFile: url.path) else { return nil }
 #elseif canImport(AppKit)
-        return NSImage(contentsOf: url)
+            guard let image = NSImage(contentsOf: url) else { return nil }
 #else
-        return nil
+            return nil
 #endif
+            cache.setObject(image, forKey: name as NSString)
+            return image
+        }
+    }
+
+    func loadImageAsync(named name: String) async -> PlatformImage? {
+        if let cached = cache.object(forKey: name as NSString) {
+            return cached
+        }
+        return await Task.detached(priority: .utility) { [weak self] in
+            self?.loadImage(named: name)
+        }.value
     }
 }

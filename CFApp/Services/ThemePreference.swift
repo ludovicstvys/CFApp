@@ -9,7 +9,7 @@ enum ThemePreference: Int, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .system: return "Système"
+        case .system: return "Systeme"
         case .light: return "Clair"
         case .dark: return "Sombre"
         }
@@ -23,4 +23,3 @@ enum ThemePreference: Int, CaseIterable, Identifiable, Codable {
         }
     }
 }
-

@@ -40,19 +40,23 @@ struct QuizSessionSummary {
 final class QuizSessionStore {
     static let shared = QuizSessionStore()
 
-    private let key = "cfaquiz.session.v1"
-    private let defaults = UserDefaults.standard
+    private struct Envelope: Codable {
+        let version: Int
+        let session: QuizSession
+    }
 
-    private init() {}
+    private let key = "cfaquiz.session.v1"
+    private let currentVersion = 2
+    private let defaults: UserDefaults
+    private let queue = DispatchQueue(label: "cfaquiz.quizSessionStore")
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     func load() -> QuizSession? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(QuizSession.self, from: data)
-        } catch {
-            return nil
+        queue.sync {
+            decodeSession(from: defaults.data(forKey: key))
         }
     }
 
@@ -66,18 +70,46 @@ final class QuizSessionStore {
     }
 
     func save(_ session: QuizSession) {
-        do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(session)
-            defaults.set(data, forKey: key)
-        } catch {
-            // ignore
+        queue.sync {
+            do {
+                let envelope = Envelope(version: currentVersion, session: session)
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
+                let data = try encoder.encode(envelope)
+                defaults.set(data, forKey: key)
+            } catch {
+                AppLogger.error("QuizSessionStore persist failed: \(error.localizedDescription)")
+            }
         }
     }
 
     func clear() {
-        defaults.removeObject(forKey: key)
+        queue.sync {
+            defaults.removeObject(forKey: key)
+        }
+    }
+
+    private func decodeSession(from data: Data?) -> QuizSession? {
+        guard let data else { return nil }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let envelope = try decoder.decode(Envelope.self, from: data)
+            return envelope.session
+        } catch {
+            do {
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let legacy = try decoder.decode(QuizSession.self, from: data)
+                save(legacy)
+                AppLogger.info("QuizSessionStore migrated legacy payload to envelope v\(currentVersion).")
+                return legacy
+            } catch {
+                AppLogger.error("QuizSessionStore decode failed: \(error.localizedDescription)")
+                return nil
+            }
+        }
     }
 }

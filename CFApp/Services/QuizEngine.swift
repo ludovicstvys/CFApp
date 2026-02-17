@@ -1,13 +1,10 @@
 import Foundation
 
-/// Moteur de sélection / mélange des questions.
-/// - Filtre par niveau/catégories/sous-catégories
-/// - Sélectionne un nombre de questions
-/// - (optionnellement) mélange l'ordre des réponses
+/// Selection/shuffle engine for quiz questions.
 struct QuizEngine {
 
-    /// Question prête à être affichée.
-    /// Si shuffleAnswers = true, on mélange les choices et on remappe correctIndices.
+    /// Question ready for display.
+    /// If `shuffleAnswers = true`, choices are shuffled and correct indices are remapped.
     struct PreparedQuestion: Identifiable, Hashable {
         let id: String
         let original: CFAQuestion
@@ -24,26 +21,10 @@ struct QuizEngine {
     ) -> [PreparedQuestion] {
 
         let validQuestions = questions.filter { q in
-            guard q.choices.count >= 2 else {
-                #if DEBUG
-                print("QuizEngine: question ignored (choices<2): \(q.id)")
-                #endif
-                return false
-            }
-            guard !q.correctIndices.isEmpty else {
-                #if DEBUG
-                print("QuizEngine: question ignored (no correctIndices): \(q.id)")
-                #endif
-                return false
-            }
+            guard q.choices.count >= 2 else { return false }
+            guard !q.correctIndices.isEmpty else { return false }
             let maxIndex = q.choices.count - 1
-            let ok = q.correctIndices.allSatisfy { (0...maxIndex).contains($0) }
-            if !ok {
-                #if DEBUG
-                print("QuizEngine: question ignored (correctIndices out of bounds): \(q.id)")
-                #endif
-            }
-            return ok
+            return q.correctIndices.allSatisfy { (0...maxIndex).contains($0) }
         }
 
         let allowAllCategories = config.categories.isEmpty
@@ -114,38 +95,29 @@ struct QuizEngine {
 
     private func srsWeight(for question: CFAQuestion, history: QuestionHistory?, now: Date) -> Double {
         guard let history else {
+            // Never seen question: still high priority, but below urgent overdue items.
             return 4.0
         }
 
-        if history.incorrectStreak > 0 {
-            let streakBoost = min(2.0, Double(history.incorrectStreak))
-            let daysSince = daysSince(history.lastAttemptAt, now: now)
-            return 3.5 + streakBoost + min(2.0, daysSince / 2.0)
+        let dueComponent: Double
+        if let nextDue = history.nextDueAt {
+            let daysToDue = (nextDue.timeIntervalSince(now)) / 86_400
+            if daysToDue <= 0 {
+                // Overdue questions get strong boost.
+                dueComponent = 4.0 + min(4.0, abs(daysToDue) / 2.0)
+            } else {
+                // Not due yet: low priority.
+                dueComponent = max(0.2, 1.0 - min(1.0, daysToDue / 7.0))
+            }
+        } else {
+            dueComponent = 2.0
         }
 
-        let interval = srsIntervalDays(for: history.correctStreak)
-        let daysSinceCorrect = daysSince(history.lastCorrectAt, now: now)
-        if daysSinceCorrect >= interval {
-            return 2.5 + min(2.5, daysSinceCorrect / max(1.0, interval))
-        }
+        let accuracyPenalty = (1.0 - history.accuracy) * 2.0
+        let incorrectBoost = min(3.0, Double(history.incorrectStreak) * 1.25)
+        let lowExposureBoost = history.seenCount <= 2 ? 1.0 : 0.0
+        let difficultyHint = Double(question.difficulty ?? 0) * 0.05
 
-        return 0.5
-    }
-
-    private func srsIntervalDays(for correctStreak: Int) -> Double {
-        switch correctStreak {
-        case 0: return 1
-        case 1: return 2
-        case 2: return 4
-        case 3: return 7
-        case 4: return 14
-        default: return 30
-        }
-    }
-
-    private func daysSince(_ date: Date?, now: Date) -> Double {
-        guard let date else { return 30 }
-        let seconds = now.timeIntervalSince(date)
-        return max(0, seconds / 86_400)
+        return dueComponent + accuracyPenalty + incorrectBoost + lowExposureBoost + difficultyHint
     }
 }

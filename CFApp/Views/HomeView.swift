@@ -46,7 +46,7 @@ struct HomeView: View {
                                 .tag(mode)
                             }
                         }
-                        .pickerStyle(.segmented)
+                        .pickerStyle(.menu)
                     }
                 }
 
@@ -69,7 +69,7 @@ struct HomeView: View {
                     }
                 }
 
-                GroupBox("Catégories") {
+                GroupBox("Categories") {
                     CategoryPickerView(
                         categories: vm.availableCategories,
                         selected: $vm.selectedCategories,
@@ -80,13 +80,13 @@ struct HomeView: View {
                     .disabled(vm.mode == .random)
 
                     if vm.mode == .random {
-                        Text("En mode Aléatoire, les catégories sont ignorées.")
+                        Text("En mode Aleatoire, les categories sont ignorees.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                GroupBox(vm.mode == .formulas ? "Topics (optionnel)" : "Sous-catégories (optionnel)") {
+                GroupBox(vm.mode == .formulas ? "Topics (optionnel)" : "Sous-categories (optionnel)") {
                     SubcategoryPickerView(
                         available: vm.availableSubcategories,
                         selected: $vm.selectedSubcategories,
@@ -97,7 +97,7 @@ struct HomeView: View {
                     .disabled(vm.mode == .random)
 
                     if vm.mode == .random {
-                        Text("En mode Aléatoire, les sous-catégories sont ignorées.")
+                        Text("En mode Aleatoire, les sous-categories sont ignorees.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else if vm.mode == .formulas {
@@ -107,32 +107,37 @@ struct HomeView: View {
                     }
                 }
 
-                GroupBox("Paramètres du quiz") {
+                GroupBox("Parametres du quiz") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Stepper("Nombre de questions : \(vm.numberOfQuestions)", value: $vm.numberOfQuestions, in: 5...60, step: 5)
+                        Stepper("Nombre de questions : \(vm.numberOfQuestions)", value: $vm.numberOfQuestions, in: 5...120, step: 5)
 
                         if vm.mode != .formulas {
-                            Toggle("Mélanger les réponses", isOn: $vm.shuffleAnswers)
+                            Toggle("Melanger les reponses", isOn: $vm.shuffleAnswers)
 
                             if vm.mode == .test {
                                 Stepper("Limite de temps (minutes) : \(vm.timeLimitMinutes)", value: $vm.timeLimitMinutes, in: 0...180, step: 5)
                                 Text("0 = pas de limite de temps")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                            } else if vm.mode == .mock {
+                                Stepper("Duree mock (minutes) : \(vm.mockExamMinutes)", value: $vm.mockExamMinutes, in: 30...360, step: 15)
+                                Text("Le mode mock supporte pause/reprise entre sessions.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             } else {
-                                Text("En mode Révision, le feedback est immédiat. En mode Test, le feedback est à la fin.")
+                                Text("En mode Revision, le feedback est immediat. En mode Test/Mock, le feedback est a la fin.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         } else {
-                            Text("Quiz de formules avec auto-vérif.")
+                            Text("Quiz de formules avec auto-verification.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                     }
                 }
 
-                PrimaryButton(title: "Démarrer", systemImage: "play.fill") {
+                PrimaryButton(title: String(localized: "app.quiz.start", defaultValue: "Demarrer"), systemImage: "play.fill") {
                     if vm.mode == .formulas {
                         startFormulaQuiz = true
                     } else {
@@ -140,11 +145,14 @@ struct HomeView: View {
                     }
                 }
                 .padding(.top, 6)
+                .accessibilityHint("Lance un nouveau quiz avec les filtres choisis")
             }
             .padding()
         }
         .navigationTitle("CFA Quiz")
+#if os(iOS) || os(tvOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.large)
+#endif
         .navigationDestination(isPresented: $startQuiz) {
             QuizView(startMode: .new(config: vm.config))
         }
@@ -159,10 +167,10 @@ struct HomeView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Révise efficacement le CFA")
+            Text(String(localized: "app.home.title", defaultValue: "Revise efficacement le CFA"))
                 .font(.title.bold())
 
-            Text("Offline, modular, et prêt pour évoluer vers un backend (scores, profils, stats).")
+            Text("Offline, modulaire, et pret pour evoluer vers un backend (scores, profils, stats).")
                 .foregroundStyle(.secondary)
         }
     }

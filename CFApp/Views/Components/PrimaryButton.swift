@@ -23,5 +23,6 @@ struct PrimaryButton: View {
         .buttonStyle(.borderedProminent)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1.0 : 0.6)
+        .accessibilityHint(isEnabled ? "Active l'action principale" : "Action desactivee")
     }
 }

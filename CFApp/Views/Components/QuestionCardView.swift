@@ -1,9 +1,4 @@
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#elseif canImport(AppKit)
-import AppKit
-#endif
 
 struct QuestionCardView: View {
     let category: CFACategory
@@ -27,23 +22,20 @@ struct QuestionCardView: View {
                 }
             }
 
-            if let imageName, let image = QuestionAssetStore.shared.loadImage(named: imageName) {
-#if canImport(UIKit)
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-#elseif canImport(AppKit)
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            if let imageName {
+#if canImport(UIKit) || canImport(AppKit)
+                AsyncPlatformImageView(
+                    imageName: imageName,
+                    loader: { await QuestionAssetStore.shared.loadImageAsync(named: $0) }
+                )
 #endif
             }
 
             Text(stem)
                 .font(.title3.weight(.semibold))
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel("Question")
+                .accessibilityValue(stem)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

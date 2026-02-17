@@ -3,6 +3,8 @@ import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var theme: ThemeManager
+    @EnvironmentObject private var commandRouter: AppCommandRouter
+
     @State private var showExporter = false
     @State private var exportDocument: CSVDocument? = nil
     @State private var exportName: String = "export"
@@ -11,11 +13,17 @@ struct SettingsView: View {
     @State private var questionCountLoadFailed = false
     @State private var reportCount: Int = 0
     @State private var confirmClearReports = false
+    @State private var showCSVImportScreen = false
+
+    @State private var showBackupExporter = false
+    @State private var showBackupImporter = false
+    @State private var backupDocument: BackupDocument? = nil
+    @State private var backupStatusMessage: String? = nil
 
     var body: some View {
         Form {
             Section("Apparence") {
-                Picker("Thème", selection: Binding(
+                Picker("Theme", selection: Binding(
                     get: { theme.preference },
                     set: { theme.preference = $0 }
                 )) {
@@ -25,13 +33,13 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Données") {
-                Text("Les questions du niveau 1 sont chargées depuis un JSON embarqué (offline). L'import ZIP ajoute des questions et images locales.")
+            Section("Donnees") {
+                Text("Les questions du niveau 1 sont chargees depuis un JSON embarque. L'import ZIP ajoute des questions et images locales.")
                     .foregroundStyle(.secondary)
 
                 Group {
                     if let questionCount {
-                        Text("Questions disponibles (base + importées) : \(questionCount)")
+                        Text("Questions disponibles (base + importees) : \(questionCount)")
                         VStack(alignment: .leading, spacing: 4) {
                             ForEach(CFALevel.allCases) { level in
                                 Text("\(level.title) : \(questionCounts[level, default: 0])")
@@ -40,7 +48,7 @@ struct SettingsView: View {
                     } else if questionCountLoadFailed {
                         Text("Questions disponibles : erreur de chargement")
                     } else {
-                        Text("Questions disponibles : …")
+                        Text("Questions disponibles : ...")
                     }
                 }
                 .foregroundStyle(.secondary)
@@ -50,6 +58,12 @@ struct SettingsView: View {
                 } label: {
                     Label("Importer des questions (ZIP)", systemImage: "square.and.arrow.down")
                 }
+
+                Button {
+                    showCSVImportScreen = true
+                } label: {
+                    Label("Ouvrir l'import ZIP", systemImage: "tray.and.arrow.down")
+                }
             }
 
             Section("Formules") {
@@ -58,12 +72,12 @@ struct SettingsView: View {
                 } label: {
                     Label("Voir les formules par topic", systemImage: "function")
                 }
-                Text("Les formules sont chargées depuis un JSON embarqué.")
+                Text("Les formules sont chargees depuis un JSON embarque.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            Section("Export") {
+            Section("Export CSV") {
                 Button {
                     exportQuestions()
                 } label: {
@@ -74,6 +88,26 @@ struct SettingsView: View {
                     exportAttempts()
                 } label: {
                     Label("Exporter les statistiques (CSV)", systemImage: "chart.line.uptrend.xyaxis")
+                }
+            }
+
+            Section("Sauvegarde complete") {
+                Button {
+                    exportFullBackup()
+                } label: {
+                    Label("Exporter sauvegarde (.json)", systemImage: "externaldrive.badge.plus")
+                }
+
+                Button {
+                    showBackupImporter = true
+                } label: {
+                    Label("Importer sauvegarde (.json)", systemImage: "externaldrive.badge.checkmark")
+                }
+
+                if let backupStatusMessage {
+                    Text(backupStatusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -96,17 +130,25 @@ struct SettingsView: View {
                 .disabled(reportCount == 0)
             }
 
-            Section("À venir (idées)") {
-                Text("• Gamification (streak, badges)\n• Synchronisation multi-appareils\n• Génération de tests par LOS\n• Import/export CSV/JSON\n• Mode “mock exam” multi-sessions")
+            Section("Roadmap") {
+                Text("CI multi-plateforme, cache image async, SRS avance, backup global, raccourcis macOS, et mock exam ont ete ajoutes.")
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Réglages")
+        .navigationTitle(String(localized: "app.settings.title", defaultValue: "Reglages"))
         .task {
             if questionCount == nil && !questionCountLoadFailed {
                 loadQuestionCount()
             }
             refreshReportCount()
+        }
+        .onChange(of: commandRouter.openImportRequestId) { _ in
+            if commandRouter.selectedTab == .settings {
+                showCSVImportScreen = true
+            }
+        }
+        .navigationDestination(isPresented: $showCSVImportScreen) {
+            CSVImportView()
         }
         .confirmationDialog("Supprimer les signalements ?", isPresented: $confirmClearReports, titleVisibility: .visible) {
             Button("Tout effacer", role: .destructive) {
@@ -122,10 +164,31 @@ struct SettingsView: View {
         ) { _ in
             exportDocument = nil
         }
+        .fileExporter(
+            isPresented: $showBackupExporter,
+            document: backupDocument ?? BackupDocument(data: Data()),
+            contentType: .json,
+            defaultFilename: "cfapp_backup"
+        ) { _ in
+            backupDocument = nil
+        }
+        .fileImporter(
+            isPresented: $showBackupImporter,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                importFullBackup(from: url)
+            case .failure(let error):
+                backupStatusMessage = "Import annule: \(error.localizedDescription)"
+            }
+        }
     }
 
     private func exportQuestions() {
-        let repo = HybridQuestionRepository()
+        let repo = AppDependencies.shared.questionRepository
         let questions = (try? repo.loadAllQuestions()) ?? []
         let csv = CSVExportService.exportQuestions(questions)
         exportDocument = CSVDocument(text: csv)
@@ -134,7 +197,7 @@ struct SettingsView: View {
     }
 
     private func exportAttempts() {
-        let attempts = StatsStore.shared.loadAttempts()
+        let attempts = AppDependencies.shared.statsStore.loadAttempts()
         let csv = CSVExportService.exportAttempts(attempts)
         exportDocument = CSVDocument(text: csv)
         exportName = "attempts"
@@ -142,15 +205,54 @@ struct SettingsView: View {
     }
 
     private func exportReports() {
-        let reports = QuestionReportStore.shared.loadReports()
+        let reports = AppDependencies.shared.questionReportStore.loadReports()
         let csv = CSVExportService.exportReports(reports)
         exportDocument = CSVDocument(text: csv)
         exportName = "question_reports"
         showExporter = true
     }
 
+    private func exportFullBackup() {
+        do {
+            let data = try AppBackupService.shared.exportBackupData()
+            backupDocument = BackupDocument(data: data)
+            showBackupExporter = true
+            backupStatusMessage = "Sauvegarde prete a etre exportee."
+        } catch {
+            backupStatusMessage = "Echec export sauvegarde: \(error.localizedDescription)"
+        }
+    }
+
+    private func importFullBackup(from url: URL) {
+        Task {
+            let canAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if canAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            do {
+                let data = try Data(contentsOf: url)
+                let summary = try AppBackupService.shared.importBackupData(data)
+                await MainActor.run {
+                    if let importedTheme = ThemePreference(rawValue: UserDefaults.standard.integer(forKey: "cfaquiz.themePreference")) {
+                        theme.preference = importedTheme
+                    }
+                    loadQuestionCount()
+                    refreshReportCount()
+                    backupStatusMessage = "Import termine: \(summary.attempts) attempts, \(summary.importedQuestions) questions importees."
+                }
+            } catch {
+                await MainActor.run {
+                    backupStatusMessage = "Import sauvegarde echoue: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+
     private func loadQuestionCount() {
-        let repo = HybridQuestionRepository()
+        let repo = AppDependencies.shared.questionRepository
         do {
             let questions = try repo.loadAllQuestions()
             questionCount = questions.count
@@ -165,11 +267,11 @@ struct SettingsView: View {
     }
 
     private func refreshReportCount() {
-        reportCount = QuestionReportStore.shared.loadReports().count
+        reportCount = AppDependencies.shared.questionReportStore.loadReports().count
     }
 
     private func clearReports() {
-        QuestionReportStore.shared.clear()
+        AppDependencies.shared.questionReportStore.clear()
         refreshReportCount()
     }
 }
@@ -195,5 +297,22 @@ struct CSVDocument: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let data = text.data(using: .utf8) ?? Data()
         return .init(regularFileWithContents: data)
+    }
+}
+
+struct BackupDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+    var data: Data
+
+    init(data: Data) {
+        self.data = data
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        self.data = configuration.file.regularFileContents ?? Data()
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: data)
     }
 }

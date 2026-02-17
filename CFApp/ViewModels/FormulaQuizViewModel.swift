@@ -27,6 +27,11 @@ final class FormulaQuizViewModel: ObservableObject {
     @Published private(set) var records: [FormulaAnswerRecord] = []
 
     private var rng = SystemRandomNumberGenerator()
+    private let favoriteStore: FormulaFavoriteStoring
+
+    init(favoriteStore: FormulaFavoriteStoring = AppDependencies.shared.formulaFavoriteStore) {
+        self.favoriteStore = favoriteStore
+    }
 
     var current: CFAFormula? {
         guard currentIndex >= 0 && currentIndex < formulas.count else { return nil }
@@ -70,9 +75,9 @@ final class FormulaQuizViewModel: ObservableObject {
     func markUnknown() {
         recordCurrent(isCorrect: false)
         if let current {
-            var favorites = FormulaFavoriteStore.shared.load()
+            var favorites = favoriteStore.load()
             favorites.insert(current.id)
-            FormulaFavoriteStore.shared.save(favorites)
+            favoriteStore.save(favorites)
         }
         goNext()
     }

@@ -19,7 +19,9 @@ struct FormulaQuizView: View {
             }
         }
         .navigationTitle("Formules")
+#if os(iOS) || os(tvOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.inline)
+#endif
         .onAppear {
             vm.start(config: config)
         }
@@ -28,7 +30,7 @@ struct FormulaQuizView: View {
     private var loading: some View {
         VStack(spacing: 14) {
             ProgressView()
-            Text("Chargement des formules…")
+            Text("Chargement des formules...")
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -39,13 +41,13 @@ struct FormulaQuizView: View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.largeTitle)
-            Text("Impossible de démarrer le quiz")
+            Text("Impossible de demarrer le quiz")
                 .font(.headline)
             Text(message)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
-            PrimaryButton(title: "Réessayer", systemImage: "arrow.clockwise") {
+            PrimaryButton(title: "Reessayer", systemImage: "arrow.clockwise") {
                 vm.start(config: config)
             }
         }
@@ -77,8 +79,9 @@ struct FormulaQuizView: View {
                     PrimaryButton(title: "Afficher la formule", systemImage: "eye") {
                         vm.reveal()
                     }
+                    .keyboardShortcut(.space, modifiers: [])
                 } else {
-                    Text("Auto-vérif : compare et choisis ta réponse.")
+                    Text("Auto-verif : compare et choisis ta reponse.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -90,14 +93,16 @@ struct FormulaQuizView: View {
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent)
+                        .keyboardShortcut("k", modifiers: [])
 
                         Button {
                             vm.markUnknown()
                         } label: {
-                            Label("À revoir", systemImage: "arrow.uturn.left")
+                            Label("A revoir", systemImage: "arrow.uturn.left")
                                 .frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.bordered)
+                        .keyboardShortcut("u", modifiers: [])
                     }
                 }
 
@@ -109,6 +114,7 @@ struct FormulaQuizView: View {
                 }
                 .buttonStyle(.bordered)
                 .foregroundStyle(.secondary)
+                .keyboardShortcut("s", modifiers: [])
             }
 
             Spacer(minLength: 0)
@@ -122,16 +128,16 @@ struct FormulaQuizView: View {
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Terminé ✅")
+                Text("Termine")
                     .font(.largeTitle.bold())
 
                 StatPillView(title: "Score", value: "\(vm.score)/\(vm.total)", systemImage: "checkmark.circle.fill")
 
                 if incorrect.isEmpty {
-                    Text("Aucune formule à revoir.")
+                    Text("Aucune formule a revoir.")
                         .foregroundStyle(.secondary)
                 } else {
-                    GroupBox("Formules à revoir") {
+                    GroupBox("Formules a revoir") {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(incorrect) { record in
                                 VStack(alignment: .leading, spacing: 4) {
@@ -148,7 +154,7 @@ struct FormulaQuizView: View {
                         }
                     }
 
-                    Text("Les formules non sues ont été ajoutées aux favoris.")
+                    Text("Les formules non sues ont ete ajoutees aux favoris.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

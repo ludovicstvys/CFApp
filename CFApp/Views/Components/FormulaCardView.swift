@@ -40,18 +40,12 @@ struct FormulaCardView: View {
                     .foregroundStyle(.secondary)
             }
 
-            if let imageName,
-               let image = FormulaAssetStore.shared.loadImage(named: imageName) {
-#if canImport(UIKit)
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-#elseif canImport(AppKit)
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            if let imageName {
+#if canImport(UIKit) || canImport(AppKit)
+                AsyncPlatformImageView(
+                    imageName: imageName,
+                    loader: { await FormulaAssetStore.shared.loadImageAsync(named: $0) }
+                )
 #endif
             }
         }

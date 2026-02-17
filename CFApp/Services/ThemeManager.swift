@@ -7,14 +7,14 @@ final class ThemeManager: ObservableObject {
     @AppStorage("cfaquiz.themePreference")
     private var storedValue: Int = ThemePreference.system.rawValue
 
-    // Requis car pas de @Published -> pas de synthèse automatique
+    // Custom publisher because we do not use @Published on computed properties.
     let objectWillChange = ObservableObjectPublisher()
 
     var preference: ThemePreference {
         get { ThemePreference(rawValue: storedValue) ?? .system }
         set {
             storedValue = newValue.rawValue
-            objectWillChange.send() // force la mise à jour des vues
+            objectWillChange.send()
         }
     }
 }

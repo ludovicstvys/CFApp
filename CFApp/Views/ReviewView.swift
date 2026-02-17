@@ -3,23 +3,28 @@ import SwiftUI
 struct ReviewView: View {
     let records: [QuizViewModel.AnswerRecord]
 
-    @State private var showIncorrectOnly = false
-    @State private var selectedCategory: CFACategory? = nil
-    @State private var selectedSubcategory: String? = nil
+    @AppStorage("cfaquiz.review.showIncorrectOnly")
+    private var showIncorrectOnly = false
+    @AppStorage("cfaquiz.review.selectedCategory")
+    private var persistedCategoryRaw = ""
+    @AppStorage("cfaquiz.review.selectedSubcategory")
+    private var persistedSubcategory = ""
+    @AppStorage("cfaquiz.review.searchText")
+    private var searchText = ""
 
     var body: some View {
         List {
             Section("Filtres") {
                 Toggle("Afficher uniquement les erreurs", isOn: $showIncorrectOnly)
 
-                Picker("Catégorie", selection: $selectedCategory) {
+                Picker("Categorie", selection: selectedCategoryBinding) {
                     Text("Toutes").tag(Optional<CFACategory>.none)
                     ForEach(availableCategories, id: \.self) { cat in
                         Text(cat.shortName).tag(Optional(cat))
                     }
                 }
 
-                Picker("Sous-catégorie", selection: $selectedSubcategory) {
+                Picker("Sous-categorie", selection: selectedSubcategoryBinding) {
                     Text("Toutes").tag(Optional<String>.none)
                     ForEach(availableSubcategories, id: \.self) { sub in
                         Text(sub).tag(Optional(sub))
@@ -63,10 +68,14 @@ struct ReviewView: View {
             }
         }
         .navigationTitle("Revue")
+#if os(iOS) || os(tvOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: selectedCategory) { _ in
-            if let selectedSubcategory, !availableSubcategories.contains(selectedSubcategory) {
-                self.selectedSubcategory = nil
+#endif
+        .searchable(text: $searchText, placement: .automatic, prompt: "Rechercher une question")
+        .onChange(of: persistedCategoryRaw) { _ in
+            guard let selectedSub = selectedSubcategoryBinding.wrappedValue else { return }
+            if !availableSubcategories.contains(selectedSub) {
+                selectedSubcategoryBinding.wrappedValue = nil
             }
         }
     }
@@ -83,13 +92,59 @@ struct ReviewView: View {
         return .secondary
     }
 
+    private var selectedCategoryBinding: Binding<CFACategory?> {
+        Binding(
+            get: {
+                let raw = persistedCategoryRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+                return raw.isEmpty ? nil : CFACategory(raw)
+            },
+            set: { newValue in
+                persistedCategoryRaw = newValue?.rawValue ?? ""
+            }
+        )
+    }
+
+    private var selectedSubcategoryBinding: Binding<String?> {
+        Binding(
+            get: {
+                let raw = persistedSubcategory.trimmingCharacters(in: .whitespacesAndNewlines)
+                return raw.isEmpty ? nil : raw
+            },
+            set: { newValue in
+                persistedSubcategory = newValue ?? ""
+            }
+        )
+    }
+
     private var filteredRecords: [QuizViewModel.AnswerRecord] {
-        records.filter { r in
+        let selectedCategory = selectedCategoryBinding.wrappedValue
+        let selectedSubcategory = selectedSubcategoryBinding.wrappedValue
+        let normalizedNeedle = searchText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .lowercased()
+
+        return records.filter { r in
             if showIncorrectOnly, r.isCorrect { return false }
             if let selectedCategory, r.category != selectedCategory { return false }
             if let selectedSubcategory {
                 let sub = (r.subcategory ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                 if sub != selectedSubcategory { return false }
+            }
+            if !normalizedNeedle.isEmpty {
+                let haystack = [
+                    r.stem,
+                    r.explanation,
+                    r.subcategory ?? "",
+                    r.category.rawValue,
+                    r.category.shortName
+                ]
+                    .joined(separator: " ")
+                    .folding(options: .diacriticInsensitive, locale: .current)
+                    .lowercased()
+                if !haystack.contains(normalizedNeedle) {
+                    return false
+                }
             }
             return true
         }
@@ -100,6 +155,7 @@ struct ReviewView: View {
     }
 
     private var availableSubcategories: [String] {
+        let selectedCategory = selectedCategoryBinding.wrappedValue
         let filtered = records.filter { r in
             if let selectedCategory, r.category != selectedCategory { return false }
             return true

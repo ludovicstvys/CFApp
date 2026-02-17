@@ -3,16 +3,43 @@ import Foundation
 @MainActor
 final class FormulasViewModel: ObservableObject {
     @Published private(set) var formulas: [CFAFormula] = []
-    @Published private(set) var favoriteIds: Set<String> = FormulaFavoriteStore.shared.load()
-    @Published var selectedCategory: CFACategory? = nil
-    @Published var selectedTopic: String? = nil
-    @Published var showFavoritesOnly: Bool = false
+    @Published private(set) var favoriteIds: Set<String>
+    @Published var selectedCategory: CFACategory? {
+        didSet {
+            persistFilters()
+            onCategoryChanged()
+        }
+    }
+    @Published var selectedTopic: String? {
+        didSet { persistFilters() }
+    }
+    @Published var showFavoritesOnly: Bool {
+        didSet { persistFilters() }
+    }
+    @Published var searchText: String {
+        didSet { persistFilters() }
+    }
 
     private let questionRepo: QuestionRepository
+    private let favoriteStore: FormulaFavoriteStoring
+    private let filterStore: FormulaFilterStore
     private var questionsById: [String: CFAQuestion] = [:]
 
-    init(repo: QuestionRepository = HybridQuestionRepository()) {
+    init(
+        repo: QuestionRepository = AppDependencies.shared.questionRepository,
+        favoriteStore: FormulaFavoriteStoring = AppDependencies.shared.formulaFavoriteStore,
+        filterStore: FormulaFilterStore = .shared
+    ) {
         self.questionRepo = repo
+        self.favoriteStore = favoriteStore
+        self.filterStore = filterStore
+
+        let filters = filterStore.load()
+        self.favoriteIds = favoriteStore.load()
+        self.selectedCategory = filters.selectedCategoryRawValue.map(CFACategory.init)
+        self.selectedTopic = filters.selectedTopic
+        self.showFavoritesOnly = filters.showFavoritesOnly
+        self.searchText = filters.searchText
         refresh()
     }
 
@@ -21,8 +48,9 @@ final class FormulasViewModel: ObservableObject {
             formulas = try LocalFormulaStore().loadAllFormulas()
         } catch {
             formulas = []
+            AppLogger.warning("FormulasViewModel failed to load formulas: \(error.localizedDescription)")
         }
-        favoriteIds = FormulaFavoriteStore.shared.load()
+        favoriteIds = favoriteStore.load()
         loadQuestions()
         normalizeFilters()
     }
@@ -36,7 +64,7 @@ final class FormulasViewModel: ObservableObject {
         let filtered = formulas.filter { formula in
             if showFavoritesOnly, !favoriteIds.contains(formula.id) { return false }
             if let selectedCategory, formula.category != selectedCategory { return false }
-            return true
+            return matchesSearch(formula: formula)
         }
         let topics = filtered.compactMap { formula in
             formula.topic?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -52,7 +80,7 @@ final class FormulasViewModel: ObservableObject {
                 let topic = (formula.topic ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
                 if topic != selectedTopic { return false }
             }
-            return true
+            return matchesSearch(formula: formula)
         }
         .sorted { lhs, rhs in
             if lhs.category.rawValue != rhs.category.rawValue {
@@ -79,7 +107,7 @@ final class FormulasViewModel: ObservableObject {
             updated.insert(formula.id)
         }
         favoriteIds = updated
-        FormulaFavoriteStore.shared.save(updated)
+        favoriteStore.save(updated)
     }
 
     func linkedQuestions(for formula: CFAFormula) -> [CFAQuestion] {
@@ -99,7 +127,10 @@ final class FormulasViewModel: ObservableObject {
         if let selectedCategory, !availableCategories.contains(selectedCategory) {
             self.selectedCategory = nil
         }
-        onCategoryChanged()
+        if let selectedTopic, !availableTopics.contains(selectedTopic) {
+            self.selectedTopic = nil
+        }
+        persistFilters()
     }
 
     private func loadQuestions() {
@@ -108,6 +139,37 @@ final class FormulasViewModel: ObservableObject {
             questionsById = Dictionary(uniqueKeysWithValues: questions.map { ($0.id, $0) })
         } catch {
             questionsById = [:]
+            AppLogger.warning("FormulasViewModel failed to load linked questions: \(error.localizedDescription)")
         }
+    }
+
+    private func matchesSearch(formula: CFAFormula) -> Bool {
+        let needle = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !needle.isEmpty else { return true }
+        let normalizedNeedle = needle.folding(options: .diacriticInsensitive, locale: .current).lowercased()
+
+        let haystack = [
+            formula.title,
+            formula.formula,
+            formula.notes ?? "",
+            formula.topic ?? "",
+            formula.category.rawValue,
+            formula.category.shortName
+        ]
+            .joined(separator: " ")
+            .folding(options: .diacriticInsensitive, locale: .current)
+            .lowercased()
+
+        return haystack.contains(normalizedNeedle)
+    }
+
+    private func persistFilters() {
+        let filters = FormulaFilters(
+            selectedCategoryRawValue: selectedCategory?.rawValue,
+            selectedTopic: selectedTopic,
+            showFavoritesOnly: showFavoritesOnly,
+            searchText: searchText
+        )
+        filterStore.save(filters)
     }
 }

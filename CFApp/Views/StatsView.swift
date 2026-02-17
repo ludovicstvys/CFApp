@@ -1,18 +1,24 @@
-import SwiftUI
+﻿import SwiftUI
 #if canImport(Charts)
 import Charts
 #endif
 
 struct StatsView: View {
     @StateObject private var vm = StatsViewModel()
-    @State private var confirmClear = false
+    private static let reusedDateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "fr_FR")
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        return df
+    }()
 
     var body: some View {
         List {
             Section {
                 HStack(spacing: 12) {
                     StatPillView(title: "Tentatives", value: "\(vm.totalAttempts)", systemImage: "square.stack.3d.up.fill")
-                    StatPillView(title: "Précision", value: "\(Int((vm.overallAccuracy * 100).rounded()))%", systemImage: "scope")
+                    StatPillView(title: "Precision", value: "\(Int((vm.overallAccuracy * 100).rounded()))%", systemImage: "scope")
                     StatPillView(title: "Best", value: "\(Int((vm.bestScorePct * 100).rounded()))%", systemImage: "trophy.fill")
                 }
                 .listRowInsets(EdgeInsets())
@@ -35,7 +41,7 @@ struct StatsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
-                    Text("Objectif désactivé.")
+                    Text("Objectif desactive.")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -58,9 +64,9 @@ struct StatsView: View {
                 }
             }
 
-            Section("Objectifs hebdo par catégorie") {
+            Section("Objectifs hebdo par categorie") {
                 if vm.availableCategories.isEmpty {
-                    Text("Aucune catégorie chargée.")
+                    Text("Aucune categorie chargee.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(vm.availableCategories) { cat in
@@ -95,7 +101,7 @@ struct StatsView: View {
                                         .foregroundStyle(.secondary)
                                 }
                             } else {
-                                Text("Objectif désactivé.")
+                                Text("Objectif desactive.")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -107,27 +113,32 @@ struct StatsView: View {
 
             Section("Tendances") {
                 #if canImport(Charts)
-                if #available(iOS 16.0, *) {
+                if #available(iOS 16.0, macOS 13.0, *) {
                     if vm.accuracySeries.isEmpty {
-                        Text("Pas assez de données pour afficher un graphique.")
+                        Text("Pas assez de donnees pour afficher un graphique.")
                             .foregroundStyle(.secondary)
                     } else {
                         Chart(vm.accuracySeries) { point in
                             LineMark(
                                 x: .value("Date", point.date),
-                                y: .value("Précision", point.accuracy)
+                                y: .value("Precision", point.accuracy)
                             )
                             PointMark(
                                 x: .value("Date", point.date),
-                                y: .value("Précision", point.accuracy)
+                                y: .value("Precision", point.accuracy)
                             )
                         }
                         .chartYScale(domain: 0...1)
                         .frame(height: 200)
                     }
                 } else {
-                    Text("Graphiques disponibles à partir d’iOS 16.")
+#if os(macOS)
+                    Text("Graphiques disponibles a partir de macOS 13.")
                         .foregroundStyle(.secondary)
+#else
+                    Text("Graphiques disponibles a partir d'iOS 16.")
+                        .foregroundStyle(.secondary)
+#endif
                 }
                 #else
                 Text("Graphiques non disponibles sur cette plateforme.")
@@ -135,21 +146,29 @@ struct StatsView: View {
                 #endif
             }
 
-            Section("Précision par thème") {
+            Section("Precision par theme") {
                 if vm.categoryAccuracy.isEmpty {
-                    Text("Aucune donnée par thème.")
+                    Text("Aucune donnee par theme.")
                         .foregroundStyle(.secondary)
                 } else {
                     #if canImport(Charts)
-                    if #available(iOS 16.0, *) {
+                    if #available(iOS 16.0, macOS 13.0, *) {
                         Chart(vm.categoryAccuracy) { point in
                             BarMark(
-                                x: .value("Catégorie", point.category.shortName),
-                                y: .value("Précision", point.accuracy)
+                                x: .value("Categorie", point.category.shortName),
+                                y: .value("Precision", point.accuracy)
                             )
                         }
                         .chartYScale(domain: 0...1)
                         .frame(height: 220)
+                    } else {
+#if os(macOS)
+                        Text("Graphiques disponibles a partir de macOS 13.")
+                            .foregroundStyle(.secondary)
+#else
+                        Text("Graphiques disponibles a partir d'iOS 16.")
+                            .foregroundStyle(.secondary)
+#endif
                     }
                     #endif
 
@@ -165,9 +184,9 @@ struct StatsView: View {
                 }
             }
 
-            Section("Questions par catégorie") {
+            Section("Questions par categorie") {
                 if vm.categoryCounts.allSatisfy({ $0.count == 0 }) {
-                    Text("Aucune question chargée.")
+                    Text("Aucune question chargee.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(vm.categoryCounts) { item in
@@ -182,9 +201,9 @@ struct StatsView: View {
                 }
             }
 
-            Section("Couverture par catégorie") {
+            Section("Couverture par categorie") {
                 if vm.categoryCoverage.allSatisfy({ $0.total == 0 }) {
-                    Text("Aucune question chargée.")
+                    Text("Aucune question chargee.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(vm.categoryCoverage) { item in
@@ -203,9 +222,9 @@ struct StatsView: View {
                 }
             }
 
-            Section("Couverture par sous-catégorie") {
+            Section("Couverture par sous-categorie") {
                 if vm.subcategoryCoverage.isEmpty {
-                    Text("Aucune sous-catégorie chargée.")
+                    Text("Aucune sous-categorie chargee.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(vm.subcategoryCoverage) { item in
@@ -225,9 +244,9 @@ struct StatsView: View {
                 }
             }
 
-            Section("Progression par sous-catégorie (LOS)") {
+            Section("Progression par sous-categorie (LOS)") {
                 if vm.subcategoryProgress.isEmpty {
-                    Text("Aucune donnée par sous-catégorie.")
+                    Text("Aucune donnee par sous-categorie.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(vm.subcategoryProgress) { item in
@@ -242,7 +261,7 @@ struct StatsView: View {
                             }
                             ProgressView(value: item.progress)
                             HStack {
-                                Text("Précision")
+                                Text("Precision")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Spacer()
@@ -300,7 +319,7 @@ struct StatsView: View {
                 }
             }
         }
-        .navigationTitle("Statistiques")
+        .navigationTitle(String(localized: "app.stats.title", defaultValue: "Statistiques"))
         .onAppear { vm.refresh() }
         .confirmationDialog("Supprimer toutes les stats ?", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("Tout effacer", role: .destructive) { vm.clearAll() }
@@ -309,12 +328,8 @@ struct StatsView: View {
     }
 
     private func dateLine(_ a: QuizAttempt) -> String {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "fr_FR")
-        df.dateStyle = .medium
-        df.timeStyle = .short
         let mins = max(1, a.durationSeconds / 60)
-        return "\(df.string(from: a.date)) • \(mins) min"
+        return "\(Self.reusedDateFormatter.string(from: a.date)) • \(mins) min"
     }
 
     private func formatTime(_ seconds: Double) -> String {

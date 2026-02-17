@@ -40,11 +40,13 @@ struct CategoryPickerView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(cat.shortName)
+                    .accessibilityValue(isSelected ? "Selectionnee" : "Non selectionnee")
                 }
             }
 
             HStack(spacing: 10) {
-                Button("Tout sélectionner", action: onSelectAll)
+                Button("Tout selectionner", action: onSelectAll)
                 Spacer()
                 Button("Tout effacer", action: onClear)
             }

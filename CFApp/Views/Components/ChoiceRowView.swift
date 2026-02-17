@@ -23,6 +23,8 @@ struct ChoiceRowView: View {
             .background(background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(text)
+        .accessibilityValue(isSelected ? "Selectionnee" : "Non selectionnee")
     }
 
     private var iconName: String {

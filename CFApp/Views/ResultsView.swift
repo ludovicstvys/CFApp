@@ -5,6 +5,8 @@ struct ResultsView: View {
     let score: Int
     let total: Int
     let records: [QuizViewModel.AnswerRecord]
+    let answeredCount: Int
+    let unansweredCount: Int
     let onRestart: () -> Void
     let onDone: () -> Void
 
@@ -30,7 +32,35 @@ struct ResultsView: View {
                     StatPillView(title: "Taux", value: pctText, systemImage: "percent")
                 }
 
-                GroupBox("Détail par catégorie") {
+                GroupBox("Detail de la session") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Questions repondues")
+                            Spacer()
+                            Text("\(answeredCount)")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        HStack {
+                            Text("Questions blanches")
+                            Spacer()
+                            Text("\(unansweredCount)")
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                        if let limit = config.effectiveTimeLimitSeconds, limit > 0 {
+                            HStack {
+                                Text("Temps alloue")
+                                Spacer()
+                                Text(formatMinutes(limit))
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                GroupBox("Detail par categorie") {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(categoryBreakdown.sorted(by: { $0.key.rawValue < $1.key.rawValue }), id: \.key) { cat, tuple in
                             HStack {
@@ -46,7 +76,7 @@ struct ResultsView: View {
                 }
 
                 if !subcategoryBreakdown.isEmpty {
-                    GroupBox("Détail par sous-catégorie") {
+                    GroupBox("Detail par sous-categorie") {
                         VStack(alignment: .leading, spacing: 10) {
                             ForEach(subcategoryBreakdown.sorted(by: { $0.key < $1.key }), id: \.key) { sub, tuple in
                                 HStack {
@@ -72,6 +102,7 @@ struct ResultsView: View {
                         }
                         Button(role: .cancel) {
                             dismiss()
+                            onDone()
                         } label: {
                             Text("Retour")
                                 .frame(maxWidth: .infinity)
@@ -82,8 +113,10 @@ struct ResultsView: View {
             }
             .padding()
         }
-        .navigationTitle("Résultats")
+        .navigationTitle("Resultats")
+#if os(iOS) || os(tvOS) || os(visionOS)
         .navigationBarTitleDisplayMode(.inline)
+#endif
         .navigationDestination(isPresented: $showReview) {
             ReviewView(records: records)
         }
@@ -91,7 +124,7 @@ struct ResultsView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Terminé ✅")
+            Text("Termine")
                 .font(.largeTitle.bold())
 
             Text("Mode : \(config.mode.title) • \(config.level.title)")
@@ -126,5 +159,11 @@ struct ResultsView: View {
             let p = t == 0 ? 0 : Double(c) / Double(t)
             return (c, t, p)
         }
+    }
+
+    private func formatMinutes(_ seconds: Int) -> String {
+        let mins = seconds / 60
+        let sec = seconds % 60
+        return String(format: "%d:%02d", mins, sec)
     }
 }

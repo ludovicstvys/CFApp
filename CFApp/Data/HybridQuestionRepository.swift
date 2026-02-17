@@ -4,9 +4,9 @@ import Foundation
 /// Si un ID est dupliqué, la version importée écrase celle du bundle.
 struct HybridQuestionRepository: QuestionRepository {
     let bundleStore: LocalQuestionStore
-    let diskStore: QuestionDiskStore
+    let diskStore: QuestionDiskStoring
 
-    init(bundleResourceName: String = "ImportedQuestions", diskStore: QuestionDiskStore = .shared) {
+    init(bundleResourceName: String = "ImportedQuestions", diskStore: QuestionDiskStoring = QuestionDiskStore.shared) {
         self.bundleStore = LocalQuestionStore(resourceName: bundleResourceName)
         self.diskStore = diskStore
     }

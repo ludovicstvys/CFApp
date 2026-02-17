@@ -8,7 +8,7 @@ final class QuizViewModel: ObservableObject {
     struct AnswerRecord: Identifiable, Hashable {
         let id: String
         let questionId: String
-        let selectedIndices: [Int]      // vide = blanc
+        let selectedIndices: [Int]
         let correctIndices: [Int]
         let category: CFACategory
         let subcategory: String?
@@ -30,34 +30,39 @@ final class QuizViewModel: ObservableObject {
     }
 
     @Published private(set) var state: State = .idle
-
     @Published private(set) var config: QuizConfig = .default()
     @Published private(set) var questions: [QuizEngine.PreparedQuestion] = []
     @Published private(set) var currentIndex: Int = 0
-
-    /// Sélection en cours (support multi-réponses)
     @Published private(set) var selectedSet: Set<Int> = []
-    /// Indique que la question courante a été soumise (révision : affiche feedback)
     @Published private(set) var isSubmitted: Bool = false
-
     @Published private(set) var records: [AnswerRecord] = []
     @Published private(set) var remainingSeconds: Int? = nil
 
     private let repo: QuestionRepository
     private let engine: QuizEngine
-    private let sessionStore: QuizSessionStore
+    private let sessionStore: QuizSessionStoring
+    private let statsStore: StatsStoring
+    private let historyStore: QuestionHistoryStoring
     private var timer: Timer?
     private var startedAt: Date?
     private var rng = SystemRandomNumberGenerator()
 
     init(
-        repo: QuestionRepository = HybridQuestionRepository(),
+        repo: QuestionRepository = AppDependencies.shared.questionRepository,
         engine: QuizEngine = QuizEngine(),
-        sessionStore: QuizSessionStore = .shared
+        sessionStore: QuizSessionStoring = AppDependencies.shared.sessionStore,
+        statsStore: StatsStoring = AppDependencies.shared.statsStore,
+        historyStore: QuestionHistoryStoring = AppDependencies.shared.historyStore
     ) {
         self.repo = repo
         self.engine = engine
         self.sessionStore = sessionStore
+        self.statsStore = statsStore
+        self.historyStore = historyStore
+    }
+
+    deinit {
+        timer?.invalidate()
     }
 
     var current: QuizEngine.PreparedQuestion? {
@@ -79,6 +84,8 @@ final class QuizViewModel: ObservableObject {
     }
 
     var total: Int { questions.count }
+    var answeredCount: Int { records.count }
+    var unansweredCount: Int { max(0, total - answeredCount) }
 
     func start(config: QuizConfig) {
         self.config = config
@@ -93,12 +100,12 @@ final class QuizViewModel: ObservableObject {
 
         do {
             let all = try repo.loadAllQuestions()
-            let history = config.mode == .spaced ? QuestionHistoryStore.shared.loadAll() : [:]
+            let history = config.mode == .spaced ? historyStore.loadAll() : [:]
             let prepared = engine.prepare(questions: all, config: config, historyById: history, rng: &rng)
-            self.questions = prepared
-            self.state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
+            questions = prepared
+            state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
 
-            if config.mode == .test, let limit = config.timeLimitSeconds {
+            if config.usesCountdown, let limit = config.effectiveTimeLimitSeconds {
                 remainingSeconds = limit
                 startTimer()
             } else {
@@ -120,18 +127,14 @@ final class QuizViewModel: ObservableObject {
 
     func toggleSelection(_ index: Int) {
         guard state == .running else { return }
-
-        // Si question déjà soumise en révision, on bloque (évite de changer après feedback)
         if config.mode == .revision, isSubmitted { return }
 
-        // Single-answer : sélection directe (remplace) + soumission immédiate
         if !isMultiAnswerCurrent {
             selectedSet = [index]
             submitCurrent()
             return
         }
 
-        // Multi-answer : toggle (check/uncheck)
         if selectedSet.contains(index) {
             selectedSet.remove(index)
         } else {
@@ -164,6 +167,12 @@ final class QuizViewModel: ObservableObject {
         persistSession()
     }
 
+    func pauseSession() {
+        guard state == .running else { return }
+        stopTimer()
+        persistSession()
+    }
+
     func finish() {
         guard state == .running else { return }
         stopTimer()
@@ -180,7 +189,6 @@ final class QuizViewModel: ObservableObject {
 
     private func submitCurrent() {
         guard let q = current else { return }
-        // Evite double soumission en révision
         if config.mode == .revision, isSubmitted { return }
 
         appendRecord(for: q, selected: Array(selectedSet).sorted())
@@ -189,7 +197,6 @@ final class QuizViewModel: ObservableObject {
             isSubmitted = true
             persistSession()
         } else {
-            // Mode test : on avance directement après validation/sélection
             goNext()
         }
     }
@@ -276,7 +283,7 @@ final class QuizViewModel: ObservableObject {
         startedAt = session.startedAt ?? Date()
         state = .running
 
-        if config.mode == .test, remainingSeconds != nil {
+        if config.usesCountdown, remainingSeconds != nil {
             startTimer()
         }
 
@@ -332,7 +339,6 @@ final class QuizViewModel: ObservableObject {
         let duration = Int(Date().timeIntervalSince(startedAt ?? Date()))
         let categories = Array(Set(records.map { $0.category })).sorted { $0.rawValue < $1.rawValue }
 
-        // Per category breakdown
         var perCat: [CFACategory: QuizAttempt.CategoryResult] = [:]
         for cat in Set(records.map { $0.category }) {
             let catRecords = records.filter { $0.category == cat }
@@ -340,9 +346,10 @@ final class QuizViewModel: ObservableObject {
             perCat[cat] = .init(correct: correct, total: catRecords.count)
         }
 
-        // Per subcategory breakdown (optionnel)
         var perSub: [String: QuizAttempt.CategoryResult] = [:]
-        let subs = records.compactMap { $0.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        let subs = records
+            .compactMap { $0.subcategory?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
         for sub in Set(subs) {
             let subRecords = records.filter { ($0.subcategory ?? "").trimmingCharacters(in: .whitespacesAndNewlines) == sub }
             perSub[sub] = .init(correct: subRecords.filter { $0.isCorrect }.count, total: subRecords.count)
@@ -358,8 +365,8 @@ final class QuizViewModel: ObservableObject {
             perCategory: perCat,
             perSubcategory: perSub.isEmpty ? nil : perSub
         )
-        StatsStore.shared.saveAttempt(attempt)
+        statsStore.saveAttempt(attempt)
         let results = records.map { QuestionHistoryStore.QuestionResult(questionId: $0.questionId, isCorrect: $0.isCorrect) }
-        QuestionHistoryStore.shared.update(with: results, at: attempt.date)
+        historyStore.update(with: results, at: attempt.date)
     }
 }

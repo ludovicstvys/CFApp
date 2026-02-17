@@ -6,7 +6,7 @@ struct FormulasView: View {
     var body: some View {
         List {
             Section("Filtres") {
-                Picker("Catégorie", selection: $vm.selectedCategory) {
+                Picker("Categorie", selection: $vm.selectedCategory) {
                     Text("Toutes").tag(Optional<CFACategory>.none)
                     ForEach(vm.availableCategories, id: \.self) { cat in
                         Text(cat.shortName).tag(Optional(cat))
@@ -45,6 +45,7 @@ struct FormulasView: View {
                                             .foregroundStyle(vm.isFavorite(formula) ? .yellow : .secondary)
                                     }
                                     .buttonStyle(.plain)
+                                    .accessibilityLabel(vm.isFavorite(formula) ? "Retirer des favoris" : "Ajouter aux favoris")
                                 }
 
                                 Text(formula.formula)
@@ -57,25 +58,19 @@ struct FormulasView: View {
                                         .foregroundStyle(.secondary)
                                 }
 
-                                if let imageName = formula.imageName,
-                                   let image = FormulaAssetStore.shared.loadImage(named: imageName) {
-#if canImport(UIKit)
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-#elseif canImport(AppKit)
-                                    Image(nsImage: image)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                if let imageName = formula.imageName {
+#if canImport(UIKit) || canImport(AppKit)
+                                    AsyncPlatformImageView(
+                                        imageName: imageName,
+                                        loader: { await FormulaAssetStore.shared.loadImageAsync(named: $0) }
+                                    )
 #endif
                                 }
 
                                 let linked = vm.linkedQuestions(for: formula)
                                 if !linked.isEmpty {
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text("Questions liées")
+                                        Text("Questions liees")
                                             .font(.caption.weight(.semibold))
                                             .foregroundStyle(.secondary)
                                         ForEach(linked.prefix(3)) { question in
@@ -85,7 +80,7 @@ struct FormulasView: View {
                                                 .fixedSize(horizontal: false, vertical: true)
                                         }
                                         if linked.count > 3 {
-                                            Text("… +\(linked.count - 3)")
+                                            Text("... +\(linked.count - 3)")
                                                 .font(.caption2)
                                                 .foregroundStyle(.secondary)
                                         }
@@ -99,11 +94,9 @@ struct FormulasView: View {
             }
         }
         .navigationTitle("Formules")
+        .searchable(text: $vm.searchText, placement: .automatic, prompt: "Rechercher une formule")
         .onChange(of: vm.selectedCategory) { _ in
             vm.onCategoryChanged()
-        }
-        .onChange(of: vm.showFavoritesOnly) { _ in
-            vm.refresh()
         }
         .onAppear {
             vm.refresh()

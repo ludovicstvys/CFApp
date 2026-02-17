@@ -41,6 +41,7 @@ struct CSVQuestionImporter {
 
     func importQuestions(from data: Data) throws -> ImportResult {
         guard let string = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
+            AppLogger.error("CSVQuestionImporter: unable to decode input data as UTF-8 or Latin-1.")
             throw ImportError.emptyFile
         }
 
@@ -70,6 +71,7 @@ struct CSVQuestionImporter {
         }
 
         if questions.isEmpty, !errors.isEmpty {
+            AppLogger.error("CSVQuestionImporter: import failed with \(errors.count) errors.")
             throw NSError(domain: "CSVImport", code: 1, userInfo: [
                 NSLocalizedDescriptionKey: "Import échoué. Exemple: \(errors[0])"
             ])

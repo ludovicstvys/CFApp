@@ -29,6 +29,7 @@ struct ZipQuestionImporter {
         try fm.unzipItem(at: zipURL, to: tempDir)
 
         guard let csvURL = findFirstCSV(in: tempDir) else {
+            AppLogger.error("ZipQuestionImporter: no CSV found in archive \(zipURL.lastPathComponent)")
             throw ImportError.missingCSV
         }
 

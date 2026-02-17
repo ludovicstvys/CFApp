@@ -1,15 +1,16 @@
 import Foundation
 #if canImport(UIKit)
 import UIKit
-public typealias PlatformImage = UIImage
 #elseif canImport(AppKit)
 import AppKit
-public typealias PlatformImage = NSImage
 #endif
 
 /// Stocke les images importees sur disque (Application Support).
 final class QuestionAssetStore {
     static let shared = QuestionAssetStore()
+    private let cache = NSCache<NSString, PlatformImage>()
+    private let ioQueue = DispatchQueue(label: "cfaquiz.questionAssetStore", qos: .utility)
+
     private init() {}
 
     private var assetsDir: URL {
@@ -27,20 +28,24 @@ final class QuestionAssetStore {
     }
 
     func saveImage(from sourceURL: URL, preferredName: String, questionId: String) -> String? {
-        let baseName = URL(fileURLWithPath: preferredName).lastPathComponent
-        let safeBase = baseName.isEmpty ? UUID().uuidString : baseName
-        let fileName = "\(questionId)_\(safeBase)"
-        let destURL = assetsDir.appendingPathComponent(fileName)
+        ioQueue.sync {
+            let baseName = URL(fileURLWithPath: preferredName).lastPathComponent
+            let safeBase = baseName.isEmpty ? UUID().uuidString : baseName
+            let fileName = "\(questionId)_\(safeBase)"
+            let destURL = assetsDir.appendingPathComponent(fileName)
 
-        do {
-            let fm = FileManager.default
-            if fm.fileExists(atPath: destURL.path) {
-                try fm.removeItem(at: destURL)
+            do {
+                let fm = FileManager.default
+                if fm.fileExists(atPath: destURL.path) {
+                    try fm.removeItem(at: destURL)
+                }
+                try fm.copyItem(at: sourceURL, to: destURL)
+                cache.removeObject(forKey: fileName as NSString)
+                return fileName
+            } catch {
+                AppLogger.warning("QuestionAssetStore save failed (\(fileName)): \(error.localizedDescription)")
+                return nil
             }
-            try fm.copyItem(at: sourceURL, to: destURL)
-            return fileName
-        } catch {
-            return nil
         }
     }
 
@@ -52,17 +57,41 @@ final class QuestionAssetStore {
     }
 
     func loadImage(named name: String) -> PlatformImage? {
-        let url = imageURL(for: name)
+        if let cached = cache.object(forKey: name as NSString) {
+            return cached
+        }
+
+        return ioQueue.sync {
+            let url = imageURL(for: name)
 #if canImport(UIKit)
-        return UIImage(contentsOfFile: url.path)
+            guard let image = UIImage(contentsOfFile: url.path) else { return nil }
 #elseif canImport(AppKit)
-        return NSImage(contentsOf: url)
+            guard let image = NSImage(contentsOf: url) else { return nil }
 #else
-        return nil
+            return nil
 #endif
+            cache.setObject(image, forKey: name as NSString)
+            return image
+        }
+    }
+
+    func loadImageAsync(named name: String) async -> PlatformImage? {
+        if let cached = cache.object(forKey: name as NSString) {
+            return cached
+        }
+        return await Task.detached(priority: .utility) { [weak self] in
+            self?.loadImage(named: name)
+        }.value
     }
 
     func clear() {
-        try? FileManager.default.removeItem(at: assetsDir)
+        ioQueue.sync {
+            do {
+                try FileManager.default.removeItem(at: assetsDir)
+                cache.removeAllObjects()
+            } catch {
+                cache.removeAllObjects()
+            }
+        }
     }
 }
