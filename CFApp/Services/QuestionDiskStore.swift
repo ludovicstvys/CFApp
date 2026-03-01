@@ -12,6 +12,8 @@ final class QuestionDiskStore {
 
     private let currentVersion = 2
     private let queue = DispatchQueue(label: "cfaquiz.questionDiskStore")
+    private var cachedQuestions: [CFAQuestion] = []
+    private var didLoadFromDisk = false
 
     private init() {}
 
@@ -27,17 +29,27 @@ final class QuestionDiskStore {
 
     func load() -> [CFAQuestion] {
         queue.sync {
+            if didLoadFromDisk {
+                return cachedQuestions
+            }
+
             do {
                 let data = try Data(contentsOf: fileURL)
                 let decoder = JSONDecoder()
                 if let envelope = try? decoder.decode(Envelope.self, from: data) {
+                    cachedQuestions = envelope.questions
+                    didLoadFromDisk = true
                     return envelope.questions
                 }
                 let legacy = try decoder.decode([CFAQuestion].self, from: data)
                 persist(legacy)
                 AppLogger.info("QuestionDiskStore migrated legacy file payload to envelope v\(currentVersion).")
+                cachedQuestions = legacy
+                didLoadFromDisk = true
                 return legacy
             } catch {
+                cachedQuestions = []
+                didLoadFromDisk = true
                 return []
             }
         }
@@ -45,12 +57,16 @@ final class QuestionDiskStore {
 
     func save(_ questions: [CFAQuestion]) {
         queue.sync {
+            cachedQuestions = questions
+            didLoadFromDisk = true
             persist(questions)
         }
     }
 
     func clear() {
         queue.sync {
+            cachedQuestions = []
+            didLoadFromDisk = true
             do {
                 try FileManager.default.removeItem(at: fileURL)
             } catch {

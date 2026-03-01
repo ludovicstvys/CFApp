@@ -6,7 +6,11 @@ enum ImportPaths {
             return URL(fileURLWithPath: env)
         }
 
+        #if os(macOS)
         let home = FileManager.default.homeDirectoryForCurrentUser
+        #else
+        let home = URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true)
+        #endif
         let candidate = home.appendingPathComponent("Desktop/Cours/Projet/CFApp", isDirectory: true)
         if isValidRepoRoot(candidate) {
             return candidate

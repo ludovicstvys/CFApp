@@ -12,6 +12,8 @@ final class FormulaFavoriteStore {
     private let currentVersion = 2
     private let defaults: UserDefaults
     private let queue = DispatchQueue(label: "cfaquiz.formulaFavoriteStore")
+    private var cachedIds: Set<String> = []
+    private var didLoadIds = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -19,37 +21,51 @@ final class FormulaFavoriteStore {
 
     func load() -> Set<String> {
         queue.sync {
-            decodeIds(from: defaults.data(forKey: key))
+            if didLoadIds {
+                return cachedIds
+            }
+            let decoded = decodeIds(from: defaults.data(forKey: key))
+            cachedIds = decoded.ids
+            didLoadIds = true
+            if decoded.needsMigration {
+                persist(decoded.ids)
+                AppLogger.info("FormulaFavoriteStore migrated legacy payload to envelope v\(currentVersion).")
+            }
+            return decoded.ids
         }
     }
 
     func save(_ ids: Set<String>) {
         queue.sync {
-            do {
-                let envelope = Envelope(version: currentVersion, ids: Array(ids).sorted())
-                let data = try JSONEncoder().encode(envelope)
-                defaults.set(data, forKey: key)
-            } catch {
-                AppLogger.error("FormulaFavoriteStore persist failed: \(error.localizedDescription)")
-            }
+            cachedIds = ids
+            didLoadIds = true
+            persist(ids)
         }
     }
 
-    private func decodeIds(from data: Data?) -> Set<String> {
-        guard let data else { return [] }
+    private func persist(_ ids: Set<String>) {
+        do {
+            let envelope = Envelope(version: currentVersion, ids: Array(ids).sorted())
+            let data = try JSONEncoder().encode(envelope)
+            defaults.set(data, forKey: key)
+        } catch {
+            AppLogger.error("FormulaFavoriteStore persist failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func decodeIds(from data: Data?) -> (ids: Set<String>, needsMigration: Bool) {
+        guard let data else { return ([], false) }
 
         if let envelope = try? JSONDecoder().decode(Envelope.self, from: data) {
-            return Set(envelope.ids)
+            return (Set(envelope.ids), false)
         }
 
         if let legacy = try? JSONDecoder().decode([String].self, from: data) {
             let asSet = Set(legacy)
-            save(asSet)
-            AppLogger.info("FormulaFavoriteStore migrated legacy payload to envelope v\(currentVersion).")
-            return asSet
+            return (asSet, true)
         }
 
         AppLogger.error("FormulaFavoriteStore decode failed.")
-        return []
+        return ([], false)
     }
 }

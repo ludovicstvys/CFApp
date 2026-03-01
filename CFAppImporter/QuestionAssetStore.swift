@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 
 final class QuestionAssetStore {
     static let shared = QuestionAssetStore()

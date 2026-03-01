@@ -30,7 +30,7 @@ struct HomeView: View {
                                 Text("Supprimer la session")
                                     .frame(maxWidth: .infinity)
                             }
-                            .buttonStyle(.bordered)
+                            .appActionButton()
                         }
                     }
                 }

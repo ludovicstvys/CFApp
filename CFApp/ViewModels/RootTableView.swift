@@ -5,17 +5,40 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $commandRouter.selectedTab) {
-            NavigationStack { HomeView() }
+            LazyTabContent {
+                NavigationStack { HomeView() }
+            }
                 .tabItem { Label("Quiz", systemImage: "questionmark.circle") }
                 .tag(AppCommandRouter.Tab.quiz)
 
-            NavigationStack { StatsView() }
+            LazyTabContent {
+                NavigationStack { StatsView() }
+            }
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
                 .tag(AppCommandRouter.Tab.stats)
 
-            NavigationStack { SettingsView() }
+            LazyTabContent {
+                NavigationStack { SettingsView() }
+            }
                 .tabItem { Label("Reglages", systemImage: "gearshape") }
                 .tag(AppCommandRouter.Tab.settings)
+        }
+    }
+}
+
+private struct LazyTabContent<Content: View>: View {
+    let content: () -> Content
+    @State private var didLoad = false
+
+    var body: some View {
+        Group {
+            if didLoad {
+                content()
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .onAppear { didLoad = true }
+            }
         }
     }
 }

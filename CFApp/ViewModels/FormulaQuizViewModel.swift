@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class FormulaQuizViewModel: ObservableObject {
@@ -26,8 +27,9 @@ final class FormulaQuizViewModel: ObservableObject {
     @Published private(set) var revealed: Bool = false
     @Published private(set) var records: [FormulaAnswerRecord] = []
 
-    private var rng = SystemRandomNumberGenerator()
     private let favoriteStore: FormulaFavoriteStoring
+    private let loadQueue = DispatchQueue(label: "cfaquiz.formulaQuizViewModel.load", qos: .userInitiated)
+    private var startGeneration = 0
 
     init(favoriteStore: FormulaFavoriteStoring = AppDependencies.shared.formulaFavoriteStore) {
         self.favoriteStore = favoriteStore
@@ -50,16 +52,29 @@ final class FormulaQuizViewModel: ObservableObject {
         currentIndex = 0
         revealed = false
         records = []
+        startGeneration += 1
+        let generation = startGeneration
 
-        do {
-            let all = try LocalFormulaStore().loadAllFormulas()
-            let filtered = filterFormulas(all, config: config)
-            let n = min(config.numberOfQuestions, filtered.count)
-            let pool = filtered.shuffled(using: &rng)
-            formulas = Array(pool.prefix(n))
-            state = formulas.isEmpty ? .failed("Aucune formule disponible pour ces filtres.") : .running
-        } catch {
-            state = .failed(error.localizedDescription)
+        loadQueue.async { [config] in
+            do {
+                let all = try LocalFormulaStore().loadAllFormulas()
+                let filtered = Self.filterFormulas(all, config: config)
+                let n = min(config.numberOfQuestions, filtered.count)
+                var rng = SystemRandomNumberGenerator()
+                let pool = filtered.shuffled(using: &rng)
+                let selected = Array(pool.prefix(n))
+
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.startGeneration == generation else { return }
+                    self.formulas = selected
+                    self.state = selected.isEmpty ? .failed("Aucune formule disponible pour ces filtres.") : .running
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.startGeneration == generation else { return }
+                    self.state = .failed(error.localizedDescription)
+                }
+            }
         }
     }
 
@@ -91,7 +106,7 @@ final class FormulaQuizViewModel: ObservableObject {
         start(config: config)
     }
 
-    private func filterFormulas(_ formulas: [CFAFormula], config: QuizConfig) -> [CFAFormula] {
+    private static func filterFormulas(_ formulas: [CFAFormula], config: QuizConfig) -> [CFAFormula] {
         let allowAllCategories = config.categories.isEmpty
         let allowedTopics = config.subcategories
 

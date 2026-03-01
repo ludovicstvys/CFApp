@@ -66,7 +66,7 @@ struct QuizAttempt: Identifiable, Codable {
         perSubcategory = try c.decodeIfPresent([String: CategoryResult].self, forKey: .perSubcategory)
 
         if let rawCats = try? c.decode([String].self, forKey: .categories) {
-            categories = rawCats.map(CFACategory.init)
+            categories = rawCats.map { CFACategory($0) }
         } else {
             categories = try c.decode([CFACategory].self, forKey: .categories)
         }

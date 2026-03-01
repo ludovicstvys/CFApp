@@ -5,6 +5,8 @@ import Charts
 
 struct StatsView: View {
     @StateObject private var vm = StatsViewModel()
+    @State private var confirmClear = false
+    @State private var visibleAttemptsCount = 80
     private static let reusedDateFormatter: DateFormatter = {
         let df = DateFormatter()
         df.locale = Locale(identifier: "fr_FR")
@@ -280,7 +282,7 @@ struct StatsView: View {
                     Text("Aucune tentative pour le moment.")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(vm.attempts) { a in
+                    ForEach(Array(vm.attempts.prefix(visibleAttemptsCount))) { a in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text("\(a.level.title) • \(a.mode.title)")
@@ -308,6 +310,13 @@ struct StatsView: View {
                         }
                         .padding(.vertical, 6)
                     }
+
+                    if vm.attempts.count > visibleAttemptsCount {
+                        Button("Afficher plus") {
+                            visibleAttemptsCount += 80
+                        }
+                        .appActionButton()
+                    }
                 }
             }
 
@@ -317,6 +326,7 @@ struct StatsView: View {
                 } label: {
                     Label("Effacer toutes les stats", systemImage: "trash")
                 }
+                .appActionButton()
             }
         }
         .navigationTitle(String(localized: "app.stats.title", defaultValue: "Statistiques"))

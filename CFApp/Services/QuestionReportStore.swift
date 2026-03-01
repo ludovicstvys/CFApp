@@ -67,6 +67,8 @@ final class QuestionReportStore {
     private let currentVersion = 2
     private let defaults: UserDefaults
     private let queue = DispatchQueue(label: "cfaquiz.questionReportStore")
+    private var cachedReports: [QuestionReport] = []
+    private var didLoadReports = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -74,26 +76,43 @@ final class QuestionReportStore {
 
     func loadReports() -> [QuestionReport] {
         queue.sync {
-            decodeReports(from: defaults.data(forKey: key)) ?? []
+            if didLoadReports {
+                return cachedReports
+            }
+            let loaded = decodeReports(from: defaults.data(forKey: key)) ?? []
+            cachedReports = loaded
+            didLoadReports = true
+            return loaded
         }
     }
 
     func saveReport(_ report: QuestionReport) {
         queue.sync {
-            var all = decodeReports(from: defaults.data(forKey: key)) ?? []
+            var all: [QuestionReport]
+            if didLoadReports {
+                all = cachedReports
+            } else {
+                all = decodeReports(from: defaults.data(forKey: key)) ?? []
+            }
             all.insert(report, at: 0)
+            cachedReports = all
+            didLoadReports = true
             persist(all)
         }
     }
 
     func saveReports(_ reports: [QuestionReport]) {
         queue.sync {
+            cachedReports = reports
+            didLoadReports = true
             persist(reports)
         }
     }
 
     func clear() {
         queue.sync {
+            cachedReports = []
+            didLoadReports = true
             defaults.removeObject(forKey: key)
         }
     }

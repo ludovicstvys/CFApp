@@ -19,8 +19,14 @@ struct ChoiceRowView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .foregroundStyle(.primary)
             }
-            .padding(12)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .frame(minHeight: 56, alignment: .leading)
             .background(background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)
@@ -56,5 +62,14 @@ struct ChoiceRowView: View {
             }
         }
         return AnyShapeStyle(Color.secondary.opacity(0.08))
+    }
+
+    private var borderColor: Color {
+        if let isCorrect {
+            if isCorrect { return .green.opacity(0.55) }
+            if isSelected { return .red.opacity(0.45) }
+            return .secondary.opacity(0.18)
+        }
+        return isSelected ? Color.accentColor.opacity(0.45) : .secondary.opacity(0.18)
     }
 }

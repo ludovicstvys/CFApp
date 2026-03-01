@@ -44,7 +44,7 @@ protocol CategoryGoalStoring {
     func saveGoals(_ goals: [String: Int])
 }
 
-protocol WeeklyGoalStoring {
+protocol WeeklyGoalStoring: AnyObject {
     var weeklyQuestionGoal: Int { get set }
 }
 

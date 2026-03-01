@@ -14,6 +14,8 @@ final class StatsStore {
     private let currentVersion = 2
     private let defaults: UserDefaults
     private let queue = DispatchQueue(label: "cfaquiz.statsStore")
+    private var cachedAttempts: [QuizAttempt] = []
+    private var didLoadAttempts = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -21,26 +23,43 @@ final class StatsStore {
 
     func loadAttempts() -> [QuizAttempt] {
         queue.sync {
-            decodeAttempts(from: defaults.data(forKey: key)) ?? []
+            if didLoadAttempts {
+                return cachedAttempts
+            }
+            let loaded = decodeAttempts(from: defaults.data(forKey: key)) ?? []
+            cachedAttempts = loaded
+            didLoadAttempts = true
+            return loaded
         }
     }
 
     func saveAttempt(_ attempt: QuizAttempt) {
         queue.sync {
-            var all = decodeAttempts(from: defaults.data(forKey: key)) ?? []
+            var all: [QuizAttempt]
+            if didLoadAttempts {
+                all = cachedAttempts
+            } else {
+                all = decodeAttempts(from: defaults.data(forKey: key)) ?? []
+            }
             all.insert(attempt, at: 0)
+            cachedAttempts = all
+            didLoadAttempts = true
             persist(all)
         }
     }
 
     func saveAllAttempts(_ attempts: [QuizAttempt]) {
         queue.sync {
+            cachedAttempts = attempts
+            didLoadAttempts = true
             persist(attempts)
         }
     }
 
     func clear() {
         queue.sync {
+            cachedAttempts = []
+            didLoadAttempts = true
             defaults.removeObject(forKey: key)
         }
     }

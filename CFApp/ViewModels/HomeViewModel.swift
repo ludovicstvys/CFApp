@@ -22,10 +22,12 @@ final class HomeViewModel: ObservableObject {
 
     private let repo: QuestionRepository
     private let sessionStore: QuizSessionStoring
+    private let loadQueue = DispatchQueue(label: "cfaquiz.homeViewModel.load", qos: .userInitiated)
     private var allQuestions: [CFAQuestion] = []
     private var allFormulas: [CFAFormula] = []
     private var questionCategories: [CFACategory] = []
     private var formulaCategories: [CFACategory] = []
+    private var loadGeneration = 0
 
     init(
         repo: QuestionRepository = AppDependencies.shared.questionRepository,
@@ -110,25 +112,40 @@ final class HomeViewModel: ObservableObject {
     // MARK: - Private
 
     private func loadCatalog() {
-        do {
-            allQuestions = try repo.loadAllQuestions()
-        } catch {
-            allQuestions = []
-            AppLogger.warning("HomeViewModel failed to load questions: \(error.localizedDescription)")
-        }
-        questionCategories = Array(Set(allQuestions.map { $0.category }))
-            .sorted { $0.rawValue < $1.rawValue }
+        loadGeneration += 1
+        let generation = loadGeneration
+        let repo = self.repo
 
-        do {
-            allFormulas = try LocalFormulaStore().loadAllFormulas()
-        } catch {
-            allFormulas = []
-            AppLogger.warning("HomeViewModel failed to load formulas: \(error.localizedDescription)")
-        }
-        formulaCategories = Array(Set(allFormulas.map { $0.category }))
-            .sorted { $0.rawValue < $1.rawValue }
+        loadQueue.async {
+            let loadedQuestions: [CFAQuestion]
+            do {
+                loadedQuestions = try repo.loadAllQuestions()
+            } catch {
+                AppLogger.warning("HomeViewModel failed to load questions: \(error.localizedDescription)")
+                loadedQuestions = []
+            }
+            let questionCategories = Array(Set(loadedQuestions.map { $0.category }))
+                .sorted { $0.rawValue < $1.rawValue }
 
-        refreshFiltersForMode()
+            let loadedFormulas: [CFAFormula]
+            do {
+                loadedFormulas = try LocalFormulaStore().loadAllFormulas()
+            } catch {
+                AppLogger.warning("HomeViewModel failed to load formulas: \(error.localizedDescription)")
+                loadedFormulas = []
+            }
+            let formulaCategories = Array(Set(loadedFormulas.map { $0.category }))
+                .sorted { $0.rawValue < $1.rawValue }
+
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.loadGeneration == generation else { return }
+                self.allQuestions = loadedQuestions
+                self.questionCategories = questionCategories
+                self.allFormulas = loadedFormulas
+                self.formulaCategories = formulaCategories
+                self.refreshFiltersForMode()
+            }
+        }
     }
 
     private func refreshAvailableSubcategories() {

@@ -36,10 +36,16 @@ struct SubcategoryPickerView: View {
 
                                 Spacer(minLength: 0)
                             }
-                            .padding(10)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 11)
+                            .frame(minHeight: 48, alignment: .leading)
                             .background(
                                 isSelected ? Color.accentColor.opacity(0.12) : Color.secondary.opacity(0.08),
                                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.secondary.opacity(0.18), lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
@@ -48,10 +54,11 @@ struct SubcategoryPickerView: View {
 
                 HStack(spacing: 10) {
                     Button("Tout selectionner", action: onSelectAll)
+                        .appActionButton()
                     Spacer()
                     Button("Tout effacer (pas de filtre)", action: onClear)
+                        .appActionButton()
                 }
-                .font(.footnote.weight(.semibold))
 
                 Text("Astuce : si rien n'est selectionne, on ne filtre pas.")
                     .font(.caption)

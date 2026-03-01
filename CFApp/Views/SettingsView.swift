@@ -64,6 +64,7 @@ struct SettingsView: View {
                 } label: {
                     Label("Ouvrir l'import ZIP", systemImage: "tray.and.arrow.down")
                 }
+                .appActionButton()
             }
 
             Section("Formules") {
@@ -83,12 +84,14 @@ struct SettingsView: View {
                 } label: {
                     Label("Exporter les questions (CSV)", systemImage: "square.and.arrow.up")
                 }
+                .appActionButton()
 
                 Button {
                     exportAttempts()
                 } label: {
                     Label("Exporter les statistiques (CSV)", systemImage: "chart.line.uptrend.xyaxis")
                 }
+                .appActionButton()
             }
 
             Section("Sauvegarde complete") {
@@ -97,12 +100,14 @@ struct SettingsView: View {
                 } label: {
                     Label("Exporter sauvegarde (.json)", systemImage: "externaldrive.badge.plus")
                 }
+                .appActionButton()
 
                 Button {
                     showBackupImporter = true
                 } label: {
                     Label("Importer sauvegarde (.json)", systemImage: "externaldrive.badge.checkmark")
                 }
+                .appActionButton()
 
                 if let backupStatusMessage {
                     Text(backupStatusMessage)
@@ -120,6 +125,7 @@ struct SettingsView: View {
                 } label: {
                     Label("Exporter les signalements (CSV)", systemImage: "square.and.arrow.up")
                 }
+                .appActionButton()
                 .disabled(reportCount == 0)
 
                 Button(role: .destructive) {
@@ -127,6 +133,7 @@ struct SettingsView: View {
                 } label: {
                     Label("Effacer les signalements", systemImage: "trash")
                 }
+                .appActionButton()
                 .disabled(reportCount == 0)
             }
 
@@ -189,42 +196,60 @@ struct SettingsView: View {
 
     private func exportQuestions() {
         let repo = AppDependencies.shared.questionRepository
-        let questions = (try? repo.loadAllQuestions()) ?? []
-        let csv = CSVExportService.exportQuestions(questions)
-        exportDocument = CSVDocument(text: csv)
-        exportName = "questions"
-        showExporter = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let questions = (try? repo.loadAllQuestions()) ?? []
+            let csv = CSVExportService.exportQuestions(questions)
+            DispatchQueue.main.async {
+                exportDocument = CSVDocument(text: csv)
+                exportName = "questions"
+                showExporter = true
+            }
+        }
     }
 
     private func exportAttempts() {
-        let attempts = AppDependencies.shared.statsStore.loadAttempts()
-        let csv = CSVExportService.exportAttempts(attempts)
-        exportDocument = CSVDocument(text: csv)
-        exportName = "attempts"
-        showExporter = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let attempts = AppDependencies.shared.statsStore.loadAttempts()
+            let csv = CSVExportService.exportAttempts(attempts)
+            DispatchQueue.main.async {
+                exportDocument = CSVDocument(text: csv)
+                exportName = "attempts"
+                showExporter = true
+            }
+        }
     }
 
     private func exportReports() {
-        let reports = AppDependencies.shared.questionReportStore.loadReports()
-        let csv = CSVExportService.exportReports(reports)
-        exportDocument = CSVDocument(text: csv)
-        exportName = "question_reports"
-        showExporter = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let reports = AppDependencies.shared.questionReportStore.loadReports()
+            let csv = CSVExportService.exportReports(reports)
+            DispatchQueue.main.async {
+                exportDocument = CSVDocument(text: csv)
+                exportName = "question_reports"
+                showExporter = true
+            }
+        }
     }
 
     private func exportFullBackup() {
-        do {
-            let data = try AppBackupService.shared.exportBackupData()
-            backupDocument = BackupDocument(data: data)
-            showBackupExporter = true
-            backupStatusMessage = "Sauvegarde prete a etre exportee."
-        } catch {
-            backupStatusMessage = "Echec export sauvegarde: \(error.localizedDescription)"
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let data = try AppBackupService.shared.exportBackupData()
+                DispatchQueue.main.async {
+                    backupDocument = BackupDocument(data: data)
+                    showBackupExporter = true
+                    backupStatusMessage = "Sauvegarde prete a etre exportee."
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    backupStatusMessage = "Echec export sauvegarde: \(error.localizedDescription)"
+                }
+            }
         }
     }
 
     private func importFullBackup(from url: URL) {
-        Task {
+        DispatchQueue.global(qos: .userInitiated).async {
             let canAccess = url.startAccessingSecurityScopedResource()
             defer {
                 if canAccess {
@@ -235,7 +260,7 @@ struct SettingsView: View {
             do {
                 let data = try Data(contentsOf: url)
                 let summary = try AppBackupService.shared.importBackupData(data)
-                await MainActor.run {
+                DispatchQueue.main.async {
                     if let importedTheme = ThemePreference(rawValue: UserDefaults.standard.integer(forKey: "cfaquiz.themePreference")) {
                         theme.preference = importedTheme
                     }
@@ -244,7 +269,7 @@ struct SettingsView: View {
                     backupStatusMessage = "Import termine: \(summary.attempts) attempts, \(summary.importedQuestions) questions importees."
                 }
             } catch {
-                await MainActor.run {
+                DispatchQueue.main.async {
                     backupStatusMessage = "Import sauvegarde echoue: \(error.localizedDescription)"
                 }
             }
@@ -253,16 +278,24 @@ struct SettingsView: View {
 
     private func loadQuestionCount() {
         let repo = AppDependencies.shared.questionRepository
-        do {
-            let questions = try repo.loadAllQuestions()
-            questionCount = questions.count
-            questionCounts = Dictionary(grouping: questions, by: \.level)
-                .mapValues { $0.count }
-            questionCountLoadFailed = false
-        } catch {
-            questionCount = nil
-            questionCounts = [:]
-            questionCountLoadFailed = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let questions = try repo.loadAllQuestions()
+                let total = questions.count
+                let counts = Dictionary(grouping: questions, by: \.level)
+                    .mapValues { $0.count }
+                DispatchQueue.main.async {
+                    questionCount = total
+                    questionCounts = counts
+                    questionCountLoadFailed = false
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    questionCount = nil
+                    questionCounts = [:]
+                    questionCountLoadFailed = true
+                }
+            }
         }
     }
 

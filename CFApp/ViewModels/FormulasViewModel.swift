@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 @MainActor
 final class FormulasViewModel: ObservableObject {
@@ -36,7 +37,7 @@ final class FormulasViewModel: ObservableObject {
 
         let filters = filterStore.load()
         self.favoriteIds = favoriteStore.load()
-        self.selectedCategory = filters.selectedCategoryRawValue.map(CFACategory.init)
+        self.selectedCategory = filters.selectedCategoryRawValue.map { CFACategory(rawValue: $0) }
         self.selectedTopic = filters.selectedTopic
         self.showFavoritesOnly = filters.showFavoritesOnly
         self.searchText = filters.searchText

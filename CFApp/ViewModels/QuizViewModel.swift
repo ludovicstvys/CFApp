@@ -43,9 +43,12 @@ final class QuizViewModel: ObservableObject {
     private let sessionStore: QuizSessionStoring
     private let statsStore: StatsStoring
     private let historyStore: QuestionHistoryStoring
+    private let workQueue = DispatchQueue(label: "cfaquiz.quizViewModel.work", qos: .userInitiated)
     private var timer: Timer?
     private var startedAt: Date?
-    private var rng = SystemRandomNumberGenerator()
+    private var startGeneration = 0
+    private var storedQuestionsForSession: [QuizSession.StoredPreparedQuestion] = []
+    private var storedRecordsForSession: [QuizSession.StoredAnswerRecord] = []
 
     init(
         repo: QuestionRepository = AppDependencies.shared.questionRepository,
@@ -94,32 +97,59 @@ final class QuizViewModel: ObservableObject {
         isSubmitted = false
         currentIndex = 0
         records = []
+        storedQuestionsForSession = []
+        storedRecordsForSession = []
         startedAt = Date()
+        startGeneration += 1
+        let generation = startGeneration
         stopTimer()
         clearSession()
 
-        do {
-            let all = try repo.loadAllQuestions()
-            let history = config.mode == .spaced ? historyStore.loadAll() : [:]
-            let prepared = engine.prepare(questions: all, config: config, historyById: history, rng: &rng)
-            questions = prepared
-            state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
+        let repo = self.repo
+        let historyStore = self.historyStore
+        let engine = self.engine
+        workQueue.async { [config] in
+            do {
+                let all = try repo.loadAllQuestions()
+                let history = config.mode == .spaced ? historyStore.loadAll() : [:]
+                var rng = SystemRandomNumberGenerator()
+                let prepared = engine.prepare(questions: all, config: config, historyById: history, rng: &rng)
 
-            if config.usesCountdown, let limit = config.effectiveTimeLimitSeconds {
-                remainingSeconds = limit
-                startTimer()
-            } else {
-                remainingSeconds = nil
-            }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.startGeneration == generation else { return }
 
-            if prepared.isEmpty {
-                clearSession()
-            } else {
-                persistSession()
+                    self.questions = prepared
+                    self.storedQuestionsForSession = prepared.map { q in
+                        QuizSession.StoredPreparedQuestion(
+                            id: q.id,
+                            original: q.original,
+                            stem: q.stem,
+                            choices: q.choices,
+                            correctIndices: q.correctIndices
+                        )
+                    }
+                    self.state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
+
+                    if config.usesCountdown, let limit = config.effectiveTimeLimitSeconds {
+                        self.remainingSeconds = limit
+                        self.startTimer()
+                    } else {
+                        self.remainingSeconds = nil
+                    }
+
+                    if prepared.isEmpty {
+                        self.clearSession()
+                    } else {
+                        self.persistSession()
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.startGeneration == generation else { return }
+                    self.state = .failed(error.localizedDescription)
+                    self.clearSession()
+                }
             }
-        } catch {
-            state = .failed(error.localizedDescription)
-            clearSession()
         }
     }
 
@@ -215,6 +245,19 @@ final class QuizViewModel: ObservableObject {
             explanation: original.explanation
         )
         records.append(record)
+        storedRecordsForSession.append(
+            QuizSession.StoredAnswerRecord(
+                id: record.id,
+                questionId: record.questionId,
+                selectedIndices: record.selectedIndices,
+                correctIndices: record.correctIndices,
+                category: record.category,
+                subcategory: record.subcategory,
+                stem: record.stem,
+                choices: record.choices,
+                explanation: record.explanation
+            )
+        )
     }
 
     private func startTimer() {
@@ -279,6 +322,8 @@ final class QuizViewModel: ObservableObject {
                 explanation: record.explanation
             )
         }
+        storedQuestionsForSession = session.questions
+        storedRecordsForSession = session.records
         remainingSeconds = session.remainingSeconds
         startedAt = session.startedAt ?? Date()
         state = .running
@@ -294,37 +339,13 @@ final class QuizViewModel: ObservableObject {
         guard state == .running else { return }
         guard !questions.isEmpty else { return }
 
-        let storedQuestions = questions.map { q in
-            QuizSession.StoredPreparedQuestion(
-                id: q.id,
-                original: q.original,
-                stem: q.stem,
-                choices: q.choices,
-                correctIndices: q.correctIndices
-            )
-        }
-
-        let storedRecords = records.map { r in
-            QuizSession.StoredAnswerRecord(
-                id: r.id,
-                questionId: r.questionId,
-                selectedIndices: r.selectedIndices,
-                correctIndices: r.correctIndices,
-                category: r.category,
-                subcategory: r.subcategory,
-                stem: r.stem,
-                choices: r.choices,
-                explanation: r.explanation
-            )
-        }
-
         let session = QuizSession(
             config: config,
-            questions: storedQuestions,
+            questions: storedQuestionsForSession,
             currentIndex: currentIndex,
             selectedSet: Array(selectedSet).sorted(),
             isSubmitted: isSubmitted,
-            records: storedRecords,
+            records: storedRecordsForSession,
             remainingSeconds: remainingSeconds,
             startedAt: startedAt
         )

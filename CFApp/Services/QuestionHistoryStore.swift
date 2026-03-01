@@ -83,6 +83,8 @@ final class QuestionHistoryStore {
     private let currentVersion = 2
     private let defaults: UserDefaults
     private let queue = DispatchQueue(label: "cfaquiz.questionHistoryStore")
+    private var cachedHistory: [String: QuestionHistory] = [:]
+    private var didLoadHistory = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -90,12 +92,20 @@ final class QuestionHistoryStore {
 
     func loadAll() -> [String: QuestionHistory] {
         queue.sync {
-            decodeHistory(from: defaults.data(forKey: key)) ?? [:]
+            if didLoadHistory {
+                return cachedHistory
+            }
+            let loaded = decodeHistory(from: defaults.data(forKey: key)) ?? [:]
+            cachedHistory = loaded
+            didLoadHistory = true
+            return loaded
         }
     }
 
     func save(_ history: [String: QuestionHistory]) {
         queue.sync {
+            cachedHistory = history
+            didLoadHistory = true
             persist(history)
         }
     }
@@ -103,18 +113,27 @@ final class QuestionHistoryStore {
     func update(with results: [QuestionResult], at date: Date = Date()) {
         guard !results.isEmpty else { return }
         queue.sync {
-            var all = decodeHistory(from: defaults.data(forKey: key)) ?? [:]
+            var all: [String: QuestionHistory]
+            if didLoadHistory {
+                all = cachedHistory
+            } else {
+                all = decodeHistory(from: defaults.data(forKey: key)) ?? [:]
+            }
             for result in results {
                 var entry = all[result.questionId] ?? QuestionHistory(id: result.questionId)
                 updateEntry(&entry, isCorrect: result.isCorrect, at: date)
                 all[result.questionId] = entry
             }
+            cachedHistory = all
+            didLoadHistory = true
             persist(all)
         }
     }
 
     func clear() {
         queue.sync {
+            cachedHistory = [:]
+            didLoadHistory = true
             defaults.removeObject(forKey: key)
         }
     }

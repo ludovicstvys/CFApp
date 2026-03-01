@@ -106,8 +106,9 @@ struct ResultsView: View {
                         } label: {
                             Text("Retour")
                                 .frame(maxWidth: .infinity)
+                                .frame(minHeight: AppButtonMetrics.minHeight)
                         }
-                        .buttonStyle(.bordered)
+                        .appActionButton()
                     }
                 }
             }

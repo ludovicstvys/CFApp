@@ -41,9 +41,6 @@ struct QuizView: View {
             if vm.state == .running, let current = vm.current {
 #if os(macOS)
                 ToolbarItem(placement: .automatic) {
-#else
-                ToolbarItem(placement: .navigationBarTrailing) {
-#endif
                     Button {
                         reportQuestion = current.original
                     } label: {
@@ -52,14 +49,22 @@ struct QuizView: View {
                     .keyboardShortcut("r", modifiers: [.command])
                     .accessibilityHint("Signaler un probleme sur la question courante")
                 }
+#else
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        reportQuestion = current.original
+                    } label: {
+                        Label("Signaler", systemImage: "exclamationmark.bubble")
+                    }
+                    .keyboardShortcut("r", modifiers: [.command])
+                    .accessibilityHint("Signaler un probleme sur la question courante")
+                }
+#endif
             }
 
             if vm.state == .running, vm.config.usesCountdown {
 #if os(macOS)
                 ToolbarItem(placement: .automatic) {
-#else
-                ToolbarItem(placement: .navigationBarLeading) {
-#endif
                     Button {
                         vm.pauseSession()
                         dismiss()
@@ -69,6 +74,18 @@ struct QuizView: View {
                     .keyboardShortcut("p", modifiers: [.command])
                     .accessibilityHint("Met en pause puis revient a l'ecran precedent")
                 }
+#else
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        vm.pauseSession()
+                        dismiss()
+                    } label: {
+                        Label("Pause", systemImage: "pause.fill")
+                    }
+                    .keyboardShortcut("p", modifiers: [.command])
+                    .accessibilityHint("Met en pause puis revient a l'ecran precedent")
+                }
+#endif
             }
         }
         .sheet(item: $reportQuestion) { question in
@@ -178,8 +195,9 @@ struct QuizView: View {
             } label: {
                 Label("Passer", systemImage: "forward.end.alt")
                     .frame(maxWidth: .infinity)
+                    .frame(minHeight: AppButtonMetrics.minHeight)
             }
-            .buttonStyle(.bordered)
+            .appActionButton()
             .keyboardShortcut("s", modifiers: [])
             .accessibilityHint("Passe la question courante")
 
@@ -200,8 +218,9 @@ struct QuizView: View {
                         systemImage: "checkmark"
                     )
                     .frame(maxWidth: .infinity)
+                    .frame(minHeight: AppButtonMetrics.minHeight)
                 }
-                .buttonStyle(.borderedProminent)
+                .appActionButton(prominent: true)
                 .disabled(vm.config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
                 .keyboardShortcut(.return, modifiers: [])
             } else {
@@ -214,8 +233,9 @@ struct QuizView: View {
                 } label: {
                     Label(vm.currentIndex + 1 == vm.total ? "Terminer" : "Suivant", systemImage: "arrow.right")
                         .frame(maxWidth: .infinity)
+                        .frame(minHeight: AppButtonMetrics.minHeight)
                 }
-                .buttonStyle(.borderedProminent)
+                .appActionButton(prominent: true)
                 .disabled(vm.config.mode == .revision && !vm.isSubmitted && vm.selectedSet.isEmpty)
                 .keyboardShortcut(.return, modifiers: [])
             }

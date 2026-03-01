@@ -4,6 +4,9 @@ struct FormulasView: View {
     @StateObject private var vm = FormulasViewModel()
 
     var body: some View {
+        let filtered = vm.filteredFormulas
+        let sections = groupedSections(from: filtered)
+
         List {
             Section("Filtres") {
                 Picker("Categorie", selection: $vm.selectedCategory) {
@@ -24,13 +27,13 @@ struct FormulasView: View {
                 Toggle("Favoris uniquement", isOn: $vm.showFavoritesOnly)
             }
 
-            if vm.filteredFormulas.isEmpty {
+            if filtered.isEmpty {
                 Section {
                     Text("Aucune formule disponible.")
                         .foregroundStyle(.secondary)
                 }
             } else {
-                ForEach(groupedSections, id: \.id) { section in
+                ForEach(sections, id: \.id) { section in
                     Section(section.title) {
                         ForEach(section.items) { formula in
                             VStack(alignment: .leading, spacing: 8) {
@@ -103,8 +106,8 @@ struct FormulasView: View {
         }
     }
 
-    private var groupedSections: [FormulaSection] {
-        let grouped = Dictionary(grouping: vm.filteredFormulas) { formula -> FormulaSectionKey in
+    private func groupedSections(from formulas: [CFAFormula]) -> [FormulaSection] {
+        let grouped = Dictionary(grouping: formulas) { formula -> FormulaSectionKey in
             let topic = (formula.topic ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             return FormulaSectionKey(
                 category: formula.category,

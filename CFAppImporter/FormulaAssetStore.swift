@@ -1,5 +1,4 @@
 import Foundation
-import AppKit
 
 final class FormulaAssetStore {
     static let shared = FormulaAssetStore()

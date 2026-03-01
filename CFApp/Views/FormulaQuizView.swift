@@ -91,8 +91,9 @@ struct FormulaQuizView: View {
                         } label: {
                             Label("Je savais", systemImage: "checkmark")
                                 .frame(maxWidth: .infinity)
+                                .frame(minHeight: AppButtonMetrics.minHeight)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .appActionButton(prominent: true)
                         .keyboardShortcut("k", modifiers: [])
 
                         Button {
@@ -100,8 +101,9 @@ struct FormulaQuizView: View {
                         } label: {
                             Label("A revoir", systemImage: "arrow.uturn.left")
                                 .frame(maxWidth: .infinity)
+                                .frame(minHeight: AppButtonMetrics.minHeight)
                         }
-                        .buttonStyle(.bordered)
+                        .appActionButton()
                         .keyboardShortcut("u", modifiers: [])
                     }
                 }
@@ -111,8 +113,9 @@ struct FormulaQuizView: View {
                 } label: {
                     Label("Passer", systemImage: "forward.end.alt")
                         .frame(maxWidth: .infinity)
+                        .frame(minHeight: AppButtonMetrics.minHeight)
                 }
-                .buttonStyle(.bordered)
+                .appActionButton()
                 .foregroundStyle(.secondary)
                 .keyboardShortcut("s", modifiers: [])
             }
@@ -168,8 +171,9 @@ struct FormulaQuizView: View {
                     } label: {
                         Text("Retour")
                             .frame(maxWidth: .infinity)
+                            .frame(minHeight: AppButtonMetrics.minHeight)
                     }
-                    .buttonStyle(.bordered)
+                    .appActionButton()
                 }
             }
             .padding()

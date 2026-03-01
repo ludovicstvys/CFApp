@@ -12,11 +12,7 @@ struct AsyncPlatformImageView: View {
     var body: some View {
         Group {
             if let image {
-#if canImport(UIKit)
-                Image(uiImage: image)
-#elseif canImport(AppKit)
-                Image(nsImage: image)
-#endif
+                platformImageView(image)
                     .resizable()
                     .scaledToFit()
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -31,6 +27,14 @@ struct AsyncPlatformImageView: View {
             image = await loader(imageName)
             isLoading = false
         }
+    }
+
+    private func platformImageView(_ image: PlatformImage) -> Image {
+#if canImport(UIKit)
+        Image(uiImage: image)
+#elseif canImport(AppKit)
+        Image(nsImage: image)
+#endif
     }
 }
 #endif

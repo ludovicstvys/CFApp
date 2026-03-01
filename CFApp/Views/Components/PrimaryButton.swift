@@ -17,10 +17,12 @@ struct PrimaryButton: View {
                     .fontWeight(.semibold)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .frame(minHeight: AppButtonMetrics.minHeight)
+            .padding(.horizontal, AppButtonMetrics.horizontalPadding)
+            .padding(.vertical, 2)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.borderedProminent)
+        .appActionButton(prominent: true)
         .disabled(!isEnabled)
         .opacity(isEnabled ? 1.0 : 0.6)
         .accessibilityHint(isEnabled ? "Active l'action principale" : "Action desactivee")
