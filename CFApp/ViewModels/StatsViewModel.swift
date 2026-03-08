@@ -70,6 +70,13 @@ final class StatsViewModel: ObservableObject {
         let progress: Double
     }
 
+    struct WeaknessFocus: Identifiable {
+        let id: String
+        let category: CFACategory
+        let attempted: Int
+        let accuracy: Double
+    }
+
     private let repo: QuestionRepository
     private let statsStore: StatsStoring
     private let historyStore: QuestionHistoryStoring
@@ -90,6 +97,7 @@ final class StatsViewModel: ObservableObject {
     private var categoryCoverageCache: [CategoryCoverage] = []
     private var subcategoryCoverageCache: [SubcategoryCoverage] = []
     private var subcategoryProgressCache: [SubcategoryProgress] = []
+    private var weaknessFocusCache: [WeaknessFocus] = []
 
     init(
         repo: QuestionRepository = AppDependencies.shared.questionRepository,
@@ -166,6 +174,12 @@ final class StatsViewModel: ObservableObject {
     var categoryCoverage: [CategoryCoverage] { categoryCoverageCache }
     var subcategoryCoverage: [SubcategoryCoverage] { subcategoryCoverageCache }
     var subcategoryProgress: [SubcategoryProgress] { subcategoryProgressCache }
+    var weaknessFocus: [WeaknessFocus] { weaknessFocusCache }
+
+    var targetedQuestionCount: Int {
+        guard !weaknessFocusCache.isEmpty else { return 20 }
+        return max(10, min(30, weaknessFocusCache.count * 8))
+    }
 
     func weeklyAnswered(for category: CFACategory) -> Int {
         weeklyByCategoryCache[category] ?? 0
@@ -246,6 +260,29 @@ final class StatsViewModel: ObservableObject {
             let acc = tuple.total == 0 ? 0 : Double(tuple.correct) / Double(tuple.total)
             return CategoryPoint(category: cat, accuracy: acc)
         }.sorted { $0.category.rawValue < $1.category.rawValue }
+
+        let allWeaknesses = catAccuracyTotals.map { cat, tuple in
+            let acc = tuple.total == 0 ? 0 : Double(tuple.correct) / Double(tuple.total)
+            return WeaknessFocus(
+                id: cat.rawValue,
+                category: cat,
+                attempted: tuple.total,
+                accuracy: acc
+            )
+        }
+        .filter { $0.attempted > 0 }
+        .sorted { lhs, rhs in
+            if lhs.accuracy == rhs.accuracy {
+                if lhs.attempted == rhs.attempted {
+                    return lhs.category.rawValue < rhs.category.rawValue
+                }
+                return lhs.attempted > rhs.attempted
+            }
+            return lhs.accuracy < rhs.accuracy
+        }
+
+        let meaningful = allWeaknesses.filter { $0.attempted >= 3 }
+        weaknessFocusCache = Array((meaningful.isEmpty ? allWeaknesses : meaningful).prefix(3))
 
         var categoryCounts: [CFACategory: Int] = [:]
         for q in allQuestions {

@@ -9,6 +9,7 @@ struct QuizView: View {
     let startMode: StartMode
     @StateObject private var vm = QuizViewModel()
     @State private var reportQuestion: CFAQuestion? = nil
+    @State private var showExplanationDetails = true
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -101,6 +102,9 @@ struct QuizView: View {
                 }
             }
         }
+        .onChange(of: vm.currentIndex) { _, _ in
+            showExplanationDetails = true
+        }
     }
 
     private var loading: some View {
@@ -132,56 +136,67 @@ struct QuizView: View {
     }
 
     private var running: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            ProgressHeaderView(
-                label: "Question",
-                index: vm.currentIndex,
-                total: vm.total,
-                score: vm.score,
-                remainingSeconds: vm.remainingSeconds
-            )
-
+        Group {
             if let current = vm.current {
-                QuestionCardView(
-                    category: current.original.category,
-                    subcategory: current.original.subcategory,
-                    stem: current.stem,
-                    imageName: current.original.imageName
-                )
-
-                if current.correctIndices.count > 1 {
-                    Text("Plusieurs reponses possibles.")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-
-                VStack(spacing: 10) {
-                    ForEach(Array(current.choices.enumerated()), id: \.offset) { idx, choice in
-                        ChoiceRowView(
-                            text: choice,
-                            isSelected: vm.selectedSet.contains(idx),
-                            isCorrect: feedbackCorrectness(for: idx),
-                            isMultiSelect: current.correctIndices.count > 1,
-                            onTap: {
-                                vm.toggleSelection(idx)
-                                if vm.config.mode == .revision, vm.isSubmitted {
-                                    return
-                                }
-                            }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        ProgressHeaderView(
+                            label: "Question",
+                            index: vm.currentIndex,
+                            total: vm.total,
+                            score: vm.score,
+                            remainingSeconds: vm.remainingSeconds
                         )
+
+                        QuestionCardView(
+                            category: current.original.category,
+                            subcategory: current.original.subcategory,
+                            stem: current.stem,
+                            imageName: current.original.imageName
+                        )
+
+                        if current.correctIndices.count > 1 {
+                            Text("Plusieurs reponses possibles.")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        VStack(spacing: 10) {
+                            ForEach(Array(current.choices.enumerated()), id: \.offset) { idx, choice in
+                                ChoiceRowView(
+                                    text: choice,
+                                    isSelected: vm.selectedSet.contains(idx),
+                                    isCorrect: feedbackCorrectness(for: idx),
+                                    isMultiSelect: current.correctIndices.count > 1,
+                                    onTap: {
+                                        vm.toggleSelection(idx)
+                                        if vm.config.mode == .revision, vm.isSubmitted {
+                                            return
+                                        }
+                                    }
+                                )
+                            }
+                        }
+
+                        if vm.config.mode == .revision, vm.isSubmitted {
+                            explanationBlock(for: current)
+                        }
                     }
+                    .padding()
+                    .padding(.bottom, AppButtonMetrics.minHeight + 34)
                 }
-
-                if vm.config.mode == .revision, vm.isSubmitted {
-                    explanationBlock(for: current)
+                .safeAreaInset(edge: .bottom) {
+                    actionBar(current: current)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+                        .padding(.bottom, 8)
+                        .background(.regularMaterial)
                 }
-
-                Spacer(minLength: 0)
-
-                actionBar(current: current)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .padding()
         .animation(.snappy, value: vm.currentIndex)
     }
 
@@ -251,6 +266,9 @@ struct QuizView: View {
 
     private func explanationBlock(for current: QuizEngine.PreparedQuestion) -> some View {
         let correct = Set(vm.selectedSet) == Set(current.correctIndices)
+        let selectedSummary = answerSummary(for: Array(vm.selectedSet), in: current.choices)
+        let expectedSummary = answerSummary(for: current.correctIndices, in: current.choices)
+
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: correct ? "checkmark.seal.fill" : "xmark.seal.fill")
@@ -259,12 +277,44 @@ struct QuizView: View {
                     .font(.headline)
             }
 
-            Text(current.original.explanation)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Ta reponse")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(selectedSummary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Bonne reponse")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(expectedSummary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            DisclosureGroup("Explication detaillee", isExpanded: $showExplanationDetails) {
+                Text(current.original.explanation)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
+            }
+            .font(.subheadline.weight(.semibold))
         }
         .padding(14)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func answerSummary(for indices: [Int], in choices: [String]) -> String {
+        let lines = indices.sorted().compactMap { idx -> String? in
+            guard choices.indices.contains(idx) else { return nil }
+            let letter = UnicodeScalar(65 + idx).map { String($0) } ?? "?"
+            return "\(letter). \(choices[idx])"
+        }
+        if lines.isEmpty {
+            return "Aucune reponse selectionnee."
+        }
+        return lines.joined(separator: "\n")
     }
 }

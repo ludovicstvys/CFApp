@@ -3,6 +3,18 @@ import Combine
 
 @MainActor
 final class HomeViewModel: ObservableObject {
+    private struct LaunchPreset: Codable {
+        let version: Int
+        let modeRawValue: String
+        let levelRawValue: Int
+        let categories: [String]
+        let subcategories: [String]
+        let numberOfQuestions: Int
+        let shuffleAnswers: Bool
+        let timeLimitMinutes: Int
+        let mockExamMinutes: Int
+    }
+
     @Published var level: CFALevel = .level1
     @Published var mode: QuizMode = .revision {
         didSet { refreshFiltersForMode() }
@@ -19,22 +31,29 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var availableCategories: [CFACategory] = []
     @Published private(set) var availableSubcategories: [String] = []
     @Published private(set) var savedSessionSummary: QuizSessionSummary? = nil
+    @Published private(set) var didRestoreLastPreset: Bool = false
 
     private let repo: QuestionRepository
     private let sessionStore: QuizSessionStoring
+    private let defaults: UserDefaults
     private let loadQueue = DispatchQueue(label: "cfaquiz.homeViewModel.load", qos: .userInitiated)
+    private let lastPresetKey = "cfaquiz.home.lastPreset.v1"
+    private let lastPresetVersion = 1
     private var allQuestions: [CFAQuestion] = []
     private var allFormulas: [CFAFormula] = []
     private var questionCategories: [CFACategory] = []
     private var formulaCategories: [CFACategory] = []
     private var loadGeneration = 0
+    private var didApplyPersistedPreset = false
 
     init(
         repo: QuestionRepository = AppDependencies.shared.questionRepository,
-        sessionStore: QuizSessionStoring = AppDependencies.shared.sessionStore
+        sessionStore: QuizSessionStoring = AppDependencies.shared.sessionStore,
+        defaults: UserDefaults = .standard
     ) {
         self.repo = repo
         self.sessionStore = sessionStore
+        self.defaults = defaults
         loadCatalog()
         refreshSavedSession()
     }
@@ -109,6 +128,31 @@ final class HomeViewModel: ObservableObject {
         refreshSavedSession()
     }
 
+    func markCurrentConfigAsLastUsed() {
+        persistCurrentPreset()
+    }
+
+    func applyTargetedQuiz(
+        categories: [CFACategory],
+        level: CFALevel,
+        questionCount: Int
+    ) {
+        self.mode = .revision
+        self.level = level
+        self.numberOfQuestions = max(5, min(120, questionCount))
+        self.timeLimitMinutes = 0
+
+        refreshFiltersForMode()
+
+        let allowed = Set(availableCategories)
+        let filtered = Set(categories).intersection(allowed)
+        selectedCategories = filtered.isEmpty ? allowed : filtered
+        selectedSubcategories.removeAll()
+        refreshAvailableSubcategories()
+
+        persistCurrentPreset()
+    }
+
     // MARK: - Private
 
     private func loadCatalog() {
@@ -143,7 +187,10 @@ final class HomeViewModel: ObservableObject {
                 self.questionCategories = questionCategories
                 self.allFormulas = loadedFormulas
                 self.formulaCategories = formulaCategories
-                self.refreshFiltersForMode()
+
+                if !self.applyPersistedPresetIfNeeded() {
+                    self.refreshFiltersForMode()
+                }
             }
         }
     }
@@ -184,5 +231,58 @@ final class HomeViewModel: ObservableObject {
         }
 
         refreshAvailableSubcategories()
+    }
+
+    @discardableResult
+    private func applyPersistedPresetIfNeeded() -> Bool {
+        guard !didApplyPersistedPreset else { return false }
+        didApplyPersistedPreset = true
+
+        guard let data = defaults.data(forKey: lastPresetKey) else { return false }
+        guard let preset = try? JSONDecoder().decode(LaunchPreset.self, from: data) else { return false }
+        guard preset.version == lastPresetVersion else { return false }
+
+        if let restoredMode = QuizMode(rawValue: preset.modeRawValue) {
+            mode = restoredMode
+        }
+        if let restoredLevel = CFALevel(rawValue: preset.levelRawValue) {
+            level = restoredLevel
+        }
+
+        numberOfQuestions = max(5, min(120, preset.numberOfQuestions))
+        shuffleAnswers = preset.shuffleAnswers
+        timeLimitMinutes = max(0, min(180, preset.timeLimitMinutes))
+        mockExamMinutes = max(30, min(360, preset.mockExamMinutes))
+
+        selectedCategories = Set(preset.categories.map { CFACategory($0) })
+        selectedSubcategories = Set(
+            preset.subcategories
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        )
+        refreshFiltersForMode()
+        didRestoreLastPreset = true
+        return true
+    }
+
+    private func persistCurrentPreset() {
+        let payload = LaunchPreset(
+            version: lastPresetVersion,
+            modeRawValue: mode.rawValue,
+            levelRawValue: level.rawValue,
+            categories: selectedCategories.map(\.rawValue).sorted(),
+            subcategories: selectedSubcategories.sorted(),
+            numberOfQuestions: max(5, min(120, numberOfQuestions)),
+            shuffleAnswers: shuffleAnswers,
+            timeLimitMinutes: max(0, min(180, timeLimitMinutes)),
+            mockExamMinutes: max(30, min(360, mockExamMinutes))
+        )
+
+        do {
+            let data = try JSONEncoder().encode(payload)
+            defaults.set(data, forKey: lastPresetKey)
+        } catch {
+            AppLogger.warning("HomeViewModel failed to persist launch preset: \(error.localizedDescription)")
+        }
     }
 }

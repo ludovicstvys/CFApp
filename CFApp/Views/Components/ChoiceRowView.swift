@@ -30,7 +30,8 @@ struct ChoiceRowView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)
-        .accessibilityValue(isSelected ? "Selectionnee" : "Non selectionnee")
+        .accessibilityValue(accessibilityStatus)
+        .accessibilityHint(isMultiSelect ? "Double tapez pour cocher ou decocher cette reponse" : "Double tapez pour choisir cette reponse")
     }
 
     private var iconName: String {
@@ -71,5 +72,14 @@ struct ChoiceRowView: View {
             return .secondary.opacity(0.18)
         }
         return isSelected ? Color.accentColor.opacity(0.45) : .secondary.opacity(0.18)
+    }
+
+    private var accessibilityStatus: String {
+        if let isCorrect {
+            if isCorrect { return "Bonne reponse" }
+            if isSelected { return "Mauvaise reponse selectionnee" }
+            return "Non selectionnee"
+        }
+        return isSelected ? "Selectionnee" : "Non selectionnee"
     }
 }

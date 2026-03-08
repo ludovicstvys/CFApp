@@ -10,6 +10,8 @@ struct CSVImportView: View {
     @State private var showReportExporter = false
     @State private var reportDocument: TextDocument? = nil
     @State private var isDropTarget = false
+    @State private var toastMessage: String? = nil
+    @State private var toastTone: ToastBannerView.Tone = .info
 
     enum Status: Equatable {
         case idle
@@ -126,6 +128,14 @@ struct CSVImportView: View {
         }
         .navigationTitle("Import ZIP/CSV")
         .overlay(dropOverlay)
+        .overlay(alignment: .bottom) {
+            if let toastMessage {
+                ToastBannerView(message: toastMessage, tone: toastTone)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy, value: toastMessage)
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTarget) { providers in
             handleDrop(providers: providers)
         }
@@ -134,8 +144,14 @@ struct CSVImportView: View {
             document: reportDocument ?? TextDocument(text: ""),
             contentType: .plainText,
             defaultFilename: "import_report"
-        ) { _ in
+        ) { result in
             reportDocument = nil
+            switch result {
+            case .success(let url):
+                showToast("Rapport exporte: \(url.lastPathComponent)", tone: .success)
+            case .failure:
+                showToast("Export du rapport annule ou echoue.", tone: .error)
+            }
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -148,6 +164,7 @@ struct CSVImportView: View {
                 handlePickedFile(url: url)
             case .failure(let error):
                 status = .failed(error.localizedDescription)
+                showToast("Import annule.", tone: .error)
             }
         }
     }
@@ -177,6 +194,7 @@ struct CSVImportView: View {
             if let error {
                 DispatchQueue.main.async {
                     status = .failed(error.localizedDescription)
+                    showToast("Erreur de lecture du fichier.", tone: .error)
                 }
                 return
             }
@@ -184,6 +202,7 @@ struct CSVImportView: View {
             guard let url = extractURL(from: item) else {
                 DispatchQueue.main.async {
                     status = .failed("Impossible de lire l'URL du fichier depose.")
+                    showToast("Fichier depose invalide.", tone: .error)
                 }
                 return
             }
@@ -215,6 +234,7 @@ struct CSVImportView: View {
             importCSV(url: url)
         } else {
             status = .failed("Type de fichier non supporte: .\(ext)")
+            showToast("Type de fichier non supporte: .\(ext)", tone: .error)
         }
     }
 
@@ -244,10 +264,16 @@ struct CSVImportView: View {
                     errors = result.errors
                     warnings = result.warnings
                     status = .success
+                    if result.errors.isEmpty {
+                        showToast("Import termine: \(result.questions.count) questions.", tone: .success)
+                    } else {
+                        showToast("Import termine avec erreurs (\(result.errors.count)).", tone: .error)
+                    }
                 }
             } catch {
                 await MainActor.run {
                     status = .failed(error.localizedDescription)
+                    showToast("Import ZIP echoue.", tone: .error)
                 }
             }
         }
@@ -279,10 +305,16 @@ struct CSVImportView: View {
                     errors = result.errors
                     warnings = result.warnings
                     status = .success
+                    if result.errors.isEmpty {
+                        showToast("Import termine: \(result.questions.count) questions.", tone: .success)
+                    } else {
+                        showToast("Import termine avec erreurs (\(result.errors.count)).", tone: .error)
+                    }
                 }
             } catch {
                 await MainActor.run {
                     status = .failed(error.localizedDescription)
+                    showToast("Import CSV echoue.", tone: .error)
                 }
             }
         }
@@ -316,6 +348,17 @@ struct CSVImportView: View {
         case .importing: return "importing"
         case .success: return "success"
         case .failed(let msg): return "failed (\(msg))"
+        }
+    }
+
+    private func showToast(_ message: String, tone: ToastBannerView.Tone) {
+        toastTone = tone
+        toastMessage = message
+        let currentMessage = message
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            if toastMessage == currentMessage {
+                toastMessage = nil
+            }
         }
     }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @EnvironmentObject private var commandRouter: AppCommandRouter
     @StateObject private var vm = HomeViewModel()
     @State private var startQuiz = false
     @State private var resumeQuiz = false
@@ -12,7 +13,7 @@ struct HomeView: View {
                 header
 
                 if let summary = vm.savedSessionSummary {
-                    GroupBox("Reprendre une session") {
+                    GroupBox("Continuer la session") {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("\(summary.config.mode.title) • \(summary.config.level.title)")
                                 .font(.subheadline.weight(.semibold))
@@ -20,9 +21,10 @@ struct HomeView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
 
-                            PrimaryButton(title: "Reprendre", systemImage: "arrow.uturn.right") {
+                            PrimaryButton(title: "Continuer", systemImage: "play.fill") {
                                 resumeQuiz = true
                             }
+                            .accessibilityHint("Reprend la session en cours")
 
                             Button(role: .destructive) {
                                 vm.clearSavedSession()
@@ -57,7 +59,7 @@ struct HomeView: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .onChange(of: vm.level) { _ in
+                    .onChange(of: vm.level) { _, _ in
                         vm.onLevelChanged()
                     }
                     .disabled(vm.mode == .formulas)
@@ -138,6 +140,7 @@ struct HomeView: View {
                 }
 
                 PrimaryButton(title: String(localized: "app.quiz.start", defaultValue: "Demarrer"), systemImage: "play.fill") {
+                    vm.markCurrentConfigAsLastUsed()
                     if vm.mode == .formulas {
                         startFormulaQuiz = true
                     } else {
@@ -162,7 +165,13 @@ struct HomeView: View {
         .navigationDestination(isPresented: $resumeQuiz) {
             QuizView(startMode: .resume(fallbackConfig: vm.config))
         }
-        .onAppear { vm.refreshSavedSession() }
+        .onAppear {
+            vm.refreshSavedSession()
+            processTargetedQuizRequestIfNeeded()
+        }
+        .onChange(of: commandRouter.targetedQuizRequest?.id) { _, _ in
+            processTargetedQuizRequestIfNeeded()
+        }
     }
 
     private var header: some View {
@@ -172,6 +181,25 @@ struct HomeView: View {
 
             Text("Offline, modulaire, et pret pour evoluer vers un backend (scores, profils, stats).")
                 .foregroundStyle(.secondary)
+
+            if vm.didRestoreLastPreset {
+                Text("Derniere configuration chargee automatiquement.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         }
+    }
+
+    private func processTargetedQuizRequestIfNeeded() {
+        guard let request = commandRouter.targetedQuizRequest else { return }
+        vm.applyTargetedQuiz(
+            categories: request.categories,
+            level: request.level,
+            questionCount: request.questionCount
+        )
+        commandRouter.consumeTargetedQuizRequest()
+        startFormulaQuiz = false
+        resumeQuiz = false
+        startQuiz = true
     }
 }

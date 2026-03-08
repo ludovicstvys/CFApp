@@ -34,10 +34,14 @@ struct ProgressHeaderView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(.thinMaterial, in: Capsule())
+                        .accessibilityLabel("Score courant")
+                        .accessibilityValue("\(score)")
                 }
             }
 
             ProgressView(value: progressValue)
+                .accessibilityLabel("Progression du quiz")
+                .accessibilityValue("\(min(index + 1, total)) sur \(total)")
         }
     }
 

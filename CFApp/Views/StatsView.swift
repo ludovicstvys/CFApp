@@ -4,6 +4,7 @@ import Charts
 #endif
 
 struct StatsView: View {
+    @EnvironmentObject private var commandRouter: AppCommandRouter
     @StateObject private var vm = StatsViewModel()
     @State private var confirmClear = false
     @State private var visibleAttemptsCount = 80
@@ -32,6 +33,39 @@ struct StatsView: View {
                 }
                 .listRowInsets(EdgeInsets())
                 .padding(.vertical, 6)
+            }
+
+            Section("Focus recommande") {
+                if vm.weaknessFocus.isEmpty {
+                    Text("Pas assez de donnees pour recommander un quiz cible.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(vm.weaknessFocus) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Label(item.category.shortName, systemImage: item.category.systemImage)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text("\(Int((item.accuracy * 100).rounded()))% • \(item.attempted) q")
+                                    .font(.subheadline.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            ProgressView(value: item.accuracy)
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    PrimaryButton(title: "Lancer un quiz cible", systemImage: "scope") {
+                        let level = vm.attempts.first?.level ?? .level1
+                        commandRouter.requestTargetedQuiz(
+                            categories: vm.weaknessFocus.map(\.category),
+                            level: level,
+                            questionCount: vm.targetedQuestionCount
+                        )
+                    }
+                    .accessibilityHint("Demarre un quiz de revision sur les themes les moins maitrises")
+                }
             }
 
             Section("Objectif hebdo") {
