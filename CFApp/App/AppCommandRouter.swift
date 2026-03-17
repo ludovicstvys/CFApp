@@ -24,6 +24,8 @@ final class AppCommandRouter: ObservableObject {
 
     enum Tab: Hashable {
         case quiz
+        case formulaRevision
+        case formulaReference
         case stats
         case settings
     }

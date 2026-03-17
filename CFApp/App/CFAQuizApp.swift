@@ -20,15 +20,25 @@ struct CFAppApp: App {
                 }
                 .keyboardShortcut("1", modifiers: [.command])
 
+                Button("Revision Formules") {
+                    commandRouter.select(.formulaRevision)
+                }
+                .keyboardShortcut("2", modifiers: [.command])
+
+                Button("Formules Expliquees") {
+                    commandRouter.select(.formulaReference)
+                }
+                .keyboardShortcut("3", modifiers: [.command])
+
                 Button("Stats") {
                     commandRouter.select(.stats)
                 }
-                .keyboardShortcut("2", modifiers: [.command])
+                .keyboardShortcut("4", modifiers: [.command])
 
                 Button("Settings") {
                     commandRouter.select(.settings)
                 }
-                .keyboardShortcut("3", modifiers: [.command])
+                .keyboardShortcut("5", modifiers: [.command])
             }
 
             CommandMenu("Data") {

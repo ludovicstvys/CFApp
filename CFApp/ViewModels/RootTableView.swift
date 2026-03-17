@@ -12,6 +12,18 @@ struct RootTabView: View {
                 .tag(AppCommandRouter.Tab.quiz)
 
             LazyTabContent {
+                NavigationStack { FormulaRevisionModuleView() }
+            }
+                .tabItem { Label("Revision", systemImage: "rectangle.stack.badge.play") }
+                .tag(AppCommandRouter.Tab.formulaRevision)
+
+            LazyTabContent {
+                NavigationStack { FormulaReferenceModuleView() }
+            }
+                .tabItem { Label("Formules", systemImage: "function") }
+                .tag(AppCommandRouter.Tab.formulaReference)
+
+            LazyTabContent {
                 NavigationStack { StatsView() }
             }
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
