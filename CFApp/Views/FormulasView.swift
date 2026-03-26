@@ -51,13 +51,10 @@ struct FormulasView: View {
                                     .accessibilityLabel(vm.isFavorite(formula) ? "Retirer des favoris" : "Ajouter aux favoris")
                                 }
 
-                                Text(formula.formula)
-                                    .font(.system(.body, design: .monospaced))
-                                    .fixedSize(horizontal: false, vertical: true)
+                                LatexTextView(content: formula.formula, isBlock: true)
 
                                 if let notes = formula.notes, !notes.isEmpty {
-                                    Text(notes)
-                                        .font(.caption)
+                                    LatexTextView(content: notes, isBlock: false)
                                         .foregroundStyle(.secondary)
                                 }
 

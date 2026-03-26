@@ -29,14 +29,11 @@ struct FormulaCardView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             if let formula, !formula.isEmpty {
-                Text(formula)
-                    .font(.system(.body, design: .monospaced))
-                    .fixedSize(horizontal: false, vertical: true)
+                LatexTextView(content: formula, isBlock: true)
             }
 
             if let notes, !notes.isEmpty {
-                Text(notes)
-                    .font(.caption)
+                LatexTextView(content: notes, isBlock: false)
                     .foregroundStyle(.secondary)
             }
 
