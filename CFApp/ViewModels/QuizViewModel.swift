@@ -43,19 +43,30 @@ final class QuizViewModel: ObservableObject {
     private let sessionStore: QuizSessionStoring
     private let statsStore: StatsStoring
     private let historyStore: QuestionHistoryStoring
-    private let workQueue = DispatchQueue(label: "cfaquiz.quizViewModel.work", qos: .userInitiated)
     private var timer: Timer?
     private var startedAt: Date?
     private var startGeneration = 0
     private var storedQuestionsForSession: [QuizSession.StoredPreparedQuestion] = []
     private var storedRecordsForSession: [QuizSession.StoredAnswerRecord] = []
 
+    @MainActor
+    convenience init() {
+        self.init(
+            repo: AppDependencies.shared.questionRepository,
+            engine: QuizEngine(),
+            sessionStore: AppDependencies.shared.sessionStore,
+            statsStore: AppDependencies.shared.statsStore,
+            historyStore: AppDependencies.shared.historyStore
+        )
+    }
+
+    @MainActor
     init(
-        repo: QuestionRepository = AppDependencies.shared.questionRepository,
-        engine: QuizEngine = QuizEngine(),
-        sessionStore: QuizSessionStoring = AppDependencies.shared.sessionStore,
-        statsStore: StatsStoring = AppDependencies.shared.statsStore,
-        historyStore: QuestionHistoryStoring = AppDependencies.shared.historyStore
+        repo: QuestionRepository,
+        engine: QuizEngine,
+        sessionStore: QuizSessionStoring,
+        statsStore: StatsStoring,
+        historyStore: QuestionHistoryStoring
     ) {
         self.repo = repo
         self.engine = engine
@@ -105,51 +116,42 @@ final class QuizViewModel: ObservableObject {
         stopTimer()
         clearSession()
 
-        let repo = self.repo
-        let historyStore = self.historyStore
-        let engine = self.engine
-        workQueue.async { [config] in
-            do {
-                let all = try repo.loadAllQuestions()
-                let history = config.mode == .spaced ? historyStore.loadAll() : [:]
-                var rng = SystemRandomNumberGenerator()
-                let prepared = engine.prepare(questions: all, config: config, historyById: history, rng: &rng)
+        do {
+            let all = try repo.loadAllQuestions()
+            let history = config.mode == .spaced ? historyStore.loadAll() : [:]
+            var rng = SystemRandomNumberGenerator()
+            let prepared = engine.prepare(questions: all, config: config, historyById: history, rng: &rng)
 
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.startGeneration == generation else { return }
+            guard startGeneration == generation else { return }
 
-                    self.questions = prepared
-                    self.storedQuestionsForSession = prepared.map { q in
-                        QuizSession.StoredPreparedQuestion(
-                            id: q.id,
-                            original: q.original,
-                            stem: q.stem,
-                            choices: q.choices,
-                            correctIndices: q.correctIndices
-                        )
-                    }
-                    self.state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
-
-                    if config.usesCountdown, let limit = config.effectiveTimeLimitSeconds {
-                        self.remainingSeconds = limit
-                        self.startTimer()
-                    } else {
-                        self.remainingSeconds = nil
-                    }
-
-                    if prepared.isEmpty {
-                        self.clearSession()
-                    } else {
-                        self.persistSession()
-                    }
-                }
-            } catch {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.startGeneration == generation else { return }
-                    self.state = .failed(error.localizedDescription)
-                    self.clearSession()
-                }
+            questions = prepared
+            storedQuestionsForSession = prepared.map { q in
+                QuizSession.StoredPreparedQuestion(
+                    id: q.id,
+                    original: q.original,
+                    stem: q.stem,
+                    choices: q.choices,
+                    correctIndices: q.correctIndices
+                )
             }
+            state = prepared.isEmpty ? .failed("Aucune question disponible pour ces filtres.") : .running
+
+            if config.usesCountdown, let limit = config.effectiveTimeLimitSeconds {
+                remainingSeconds = limit
+                startTimer()
+            } else {
+                remainingSeconds = nil
+            }
+
+            if prepared.isEmpty {
+                clearSession()
+            } else {
+                persistSession()
+            }
+        } catch {
+            guard startGeneration == generation else { return }
+            state = .failed(error.localizedDescription)
+            clearSession()
         }
     }
 
@@ -263,18 +265,20 @@ final class QuizViewModel: ObservableObject {
     private func startTimer() {
         stopTimer()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            guard self.state == .running else { return }
-            guard let remaining = self.remainingSeconds else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard self.state == .running else { return }
+                guard let remaining = self.remainingSeconds else { return }
 
-            if remaining <= 1 {
-                self.remainingSeconds = 0
-                self.recordCurrentIfNeeded()
-                self.finish()
-            } else {
-                self.remainingSeconds = remaining - 1
-                if remaining % 10 == 0 {
-                    self.persistSession()
+                if remaining <= 1 {
+                    self.remainingSeconds = 0
+                    self.recordCurrentIfNeeded()
+                    self.finish()
+                } else {
+                    self.remainingSeconds = remaining - 1
+                    if remaining % 10 == 0 {
+                        self.persistSession()
+                    }
                 }
             }
         }

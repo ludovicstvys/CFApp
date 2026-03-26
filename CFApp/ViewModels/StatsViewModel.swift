@@ -99,12 +99,24 @@ final class StatsViewModel: ObservableObject {
     private var subcategoryProgressCache: [SubcategoryProgress] = []
     private var weaknessFocusCache: [WeaknessFocus] = []
 
+    @MainActor
+    convenience init() {
+        self.init(
+            repo: AppDependencies.shared.questionRepository,
+            statsStore: AppDependencies.shared.statsStore,
+            historyStore: AppDependencies.shared.historyStore,
+            weeklyGoalStore: AppDependencies.shared.weeklyGoalStore,
+            categoryGoalStore: AppDependencies.shared.categoryGoalStore
+        )
+    }
+
+    @MainActor
     init(
-        repo: QuestionRepository = AppDependencies.shared.questionRepository,
-        statsStore: StatsStoring = AppDependencies.shared.statsStore,
-        historyStore: QuestionHistoryStoring = AppDependencies.shared.historyStore,
-        weeklyGoalStore: WeeklyGoalStoring = AppDependencies.shared.weeklyGoalStore,
-        categoryGoalStore: CategoryGoalStoring = AppDependencies.shared.categoryGoalStore
+        repo: QuestionRepository,
+        statsStore: StatsStoring,
+        historyStore: QuestionHistoryStoring,
+        weeklyGoalStore: WeeklyGoalStoring,
+        categoryGoalStore: CategoryGoalStoring
     ) {
         self.repo = repo
         self.statsStore = statsStore

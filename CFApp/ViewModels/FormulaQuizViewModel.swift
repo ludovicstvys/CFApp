@@ -28,10 +28,15 @@ final class FormulaQuizViewModel: ObservableObject {
     @Published private(set) var records: [FormulaAnswerRecord] = []
 
     private let favoriteStore: FormulaFavoriteStoring
-    private let loadQueue = DispatchQueue(label: "cfaquiz.formulaQuizViewModel.load", qos: .userInitiated)
     private var startGeneration = 0
 
-    init(favoriteStore: FormulaFavoriteStoring = AppDependencies.shared.formulaFavoriteStore) {
+    @MainActor
+    convenience init() {
+        self.init(favoriteStore: AppDependencies.shared.formulaFavoriteStore)
+    }
+
+    @MainActor
+    init(favoriteStore: FormulaFavoriteStoring) {
         self.favoriteStore = favoriteStore
     }
 
@@ -55,26 +60,20 @@ final class FormulaQuizViewModel: ObservableObject {
         startGeneration += 1
         let generation = startGeneration
 
-        loadQueue.async { [config] in
-            do {
-                let all = try LocalFormulaStore().loadAllFormulas()
-                let filtered = Self.filterFormulas(all, config: config)
-                let n = min(config.numberOfQuestions, filtered.count)
-                var rng = SystemRandomNumberGenerator()
-                let pool = filtered.shuffled(using: &rng)
-                let selected = Array(pool.prefix(n))
+        do {
+            let all = try LocalFormulaStore().loadAllFormulas()
+            let filtered = Self.filterFormulas(all, config: config)
+            let n = min(config.numberOfQuestions, filtered.count)
+            var rng = SystemRandomNumberGenerator()
+            let pool = filtered.shuffled(using: &rng)
+            let selected = Array(pool.prefix(n))
 
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.startGeneration == generation else { return }
-                    self.formulas = selected
-                    self.state = selected.isEmpty ? .failed("Aucune formule disponible pour ces filtres.") : .running
-                }
-            } catch {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, self.startGeneration == generation else { return }
-                    self.state = .failed(error.localizedDescription)
-                }
-            }
+            guard startGeneration == generation else { return }
+            formulas = selected
+            state = selected.isEmpty ? .failed("Aucune formule disponible pour ces filtres.") : .running
+        } catch {
+            guard startGeneration == generation else { return }
+            state = .failed(error.localizedDescription)
         }
     }
 

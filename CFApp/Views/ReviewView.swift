@@ -72,7 +72,7 @@ struct ReviewView: View {
         .navigationBarTitleDisplayMode(.inline)
 #endif
         .searchable(text: $searchText, placement: .automatic, prompt: "Rechercher une question")
-        .onChange(of: persistedCategoryRaw) { _ in
+        .onChange(of: persistedCategoryRaw) { _, _ in
             guard let selectedSub = selectedSubcategoryBinding.wrappedValue else { return }
             if !availableSubcategories.contains(selectedSub) {
                 selectedSubcategoryBinding.wrappedValue = nil

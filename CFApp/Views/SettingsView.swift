@@ -111,7 +111,7 @@ struct SettingsView: View {
     }
 
     private func exportStats() {
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task(priority: .userInitiated) {
             let attempts = AppDependencies.shared.statsStore.loadAttempts()
             let payload = StatsTransferPayload(
                 schemaVersion: 1,
@@ -125,36 +125,30 @@ struct SettingsView: View {
                 encoder.dateEncodingStrategy = .iso8601
                 let data = try encoder.encode(payload)
 
-                DispatchQueue.main.async {
-                    statsDocument = StatsDocument(data: data)
-                    showStatsExporter = true
-                    statsStatusMessage = "Export termine: \(attempts.count) tentatives."
-                    showToast("Fichier de statistiques pret.", tone: .success)
-                }
+                statsDocument = StatsDocument(data: data)
+                showStatsExporter = true
+                statsStatusMessage = "Export termine: \(attempts.count) tentatives."
+                showToast("Fichier de statistiques pret.", tone: .success)
             } catch {
-                DispatchQueue.main.async {
-                    statsStatusMessage = "Echec export statistiques: \(error.localizedDescription)"
-                    showToast("Echec export statistiques.", tone: .error)
-                }
+                statsStatusMessage = "Echec export statistiques: \(error.localizedDescription)"
+                showToast("Echec export statistiques.", tone: .error)
             }
         }
     }
 
     private func exportReports() {
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task(priority: .userInitiated) {
             let reports = AppDependencies.shared.questionReportStore.loadReports()
             let csv = CSVExportService.exportReports(reports)
-            DispatchQueue.main.async {
-                exportDocument = CSVDocument(text: csv)
-                exportName = "question_reports"
-                showExporter = true
-                showToast("Fichier de signalements pret.", tone: .success)
-            }
+            exportDocument = CSVDocument(text: csv)
+            exportName = "question_reports"
+            showExporter = true
+            showToast("Fichier de signalements pret.", tone: .success)
         }
     }
 
     private func importStats(from url: URL) {
-        DispatchQueue.global(qos: .userInitiated).async {
+        Task(priority: .userInitiated) {
             do {
                 let canAccess = url.startAccessingSecurityScopedResource()
                 defer {
@@ -167,15 +161,11 @@ struct SettingsView: View {
                 let attempts = try decodeStatsAttempts(from: data)
                 AppDependencies.shared.statsStore.saveAllAttempts(attempts)
 
-                DispatchQueue.main.async {
-                    statsStatusMessage = "Import termine: \(attempts.count) tentatives."
-                    showToast("Import statistiques termine.", tone: .success)
-                }
+                statsStatusMessage = "Import termine: \(attempts.count) tentatives."
+                showToast("Import statistiques termine.", tone: .success)
             } catch {
-                DispatchQueue.main.async {
-                    statsStatusMessage = "Import statistiques echoue: \(error.localizedDescription)"
-                    showToast("Import statistiques echoue.", tone: .error)
-                }
+                statsStatusMessage = "Import statistiques echoue: \(error.localizedDescription)"
+                showToast("Import statistiques echoue.", tone: .error)
             }
         }
     }

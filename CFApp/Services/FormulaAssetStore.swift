@@ -56,8 +56,6 @@ final class FormulaAssetStore {
         if let cached = cache.object(forKey: name as NSString) {
             return cached
         }
-        return await Task.detached(priority: .utility) { [weak self] in
-            self?.loadImage(named: name)
-        }.value
+        return loadImage(named: name)
     }
 }

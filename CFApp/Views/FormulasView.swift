@@ -98,7 +98,7 @@ struct FormulasView: View {
         }
         .navigationTitle("Formules")
         .searchable(text: $vm.searchText, placement: .automatic, prompt: "Rechercher une formule")
-        .onChange(of: vm.selectedCategory) { _ in
+        .onChange(of: vm.selectedCategory) { _, _ in
             vm.onCategoryChanged()
         }
         .onAppear {

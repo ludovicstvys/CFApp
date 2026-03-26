@@ -91,12 +91,12 @@ struct CSVExportService {
         return buildCSV(header: header, rows: rows)
     }
 
-    private static func padChoices(_ choices: [String], count: Int) -> [String] {
+    nonisolated private static func padChoices(_ choices: [String], count: Int) -> [String] {
         if choices.count >= count { return Array(choices.prefix(count)) }
         return choices + Array(repeating: "", count: count - choices.count)
     }
 
-    private static func formatAnswerIndices(_ indices: [Int]) -> String {
+    nonisolated private static func formatAnswerIndices(_ indices: [Int]) -> String {
         let map = ["A", "B", "C", "D"]
         return indices.map { idx in
             if idx >= 0 && idx < map.count { return map[idx] }
@@ -104,7 +104,7 @@ struct CSVExportService {
         }.joined(separator: "|")
     }
 
-    private static func buildCSV(header: [String], rows: [[String]]) -> String {
+    nonisolated private static func buildCSV(header: [String], rows: [[String]]) -> String {
         var lines: [String] = []
         lines.append(header.map(escape).joined(separator: ","))
         for row in rows {
@@ -113,7 +113,7 @@ struct CSVExportService {
         return lines.joined(separator: "\n")
     }
 
-    private static func escape(_ value: String) -> String {
+    nonisolated private static func escape(_ value: String) -> String {
         let needsQuotes = value.contains(",") || value.contains("\"") || value.contains("\n")
         var escaped = value.replacingOccurrences(of: "\"", with: "\"\"")
         if needsQuotes {
@@ -122,7 +122,7 @@ struct CSVExportService {
         return escaped
     }
 
-    private static func iso8601String(_ date: Date) -> String {
+    nonisolated private static func iso8601String(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.string(from: date)

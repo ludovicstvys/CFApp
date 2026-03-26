@@ -26,10 +26,20 @@ final class FormulasViewModel: ObservableObject {
     private let filterStore: FormulaFilterStore
     private var questionsById: [String: CFAQuestion] = [:]
 
+    @MainActor
+    convenience init() {
+        self.init(
+            repo: AppDependencies.shared.questionRepository,
+            favoriteStore: AppDependencies.shared.formulaFavoriteStore,
+            filterStore: .shared
+        )
+    }
+
+    @MainActor
     init(
-        repo: QuestionRepository = AppDependencies.shared.questionRepository,
-        favoriteStore: FormulaFavoriteStoring = AppDependencies.shared.formulaFavoriteStore,
-        filterStore: FormulaFilterStore = .shared
+        repo: QuestionRepository,
+        favoriteStore: FormulaFavoriteStoring,
+        filterStore: FormulaFilterStore
     ) {
         self.questionRepo = repo
         self.favoriteStore = favoriteStore
